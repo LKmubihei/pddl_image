@@ -1,0 +1,2 @@
+source_file,K,condition,feature_source,transition_mask_source,transition_supervision,direct_object_tokens,object_type_source,n_labeled_samples,n_labeled_states,best_val_f1,best_threshold,precision,recall,f1,macro_f1,exact_match,type_acc,pred_pos_rate,label_pos_rate,avg_prob
+experiments/quick_real_dinov3_pddl_20260530_192416/fewshot_structural_results.json,2,static,cached_dinov3,pddl,static_pddl_weak,False,oracle,2,2,0.4000000059604645,0.05000000074505806,0.25,1.0,0.4000000059604645,0.38202112913131714,0.0,0.6748236417770386,1.0,0.25,0.4863116443157196

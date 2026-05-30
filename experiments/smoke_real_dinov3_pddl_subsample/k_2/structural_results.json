@@ -1,0 +1,21 @@
+{
+  "adjacent": {
+    "condition": "adjacent",
+    "description": "C1 + C2: Pointwise + Action Equivariance",
+    "transition_mask_source": "pddl",
+    "test": {
+      "precision": 0.25,
+      "recall": 1.0,
+      "f1": 0.4000000059604645,
+      "macro_f1": 0.38202112913131714,
+      "exact_match": 0.0,
+      "type_acc": 0.684303343296051,
+      "threshold": 0.05000000074505806,
+      "pred_pos_rate": 1.0,
+      "label_pos_rate": 0.25,
+      "avg_prob": 0.47769078612327576
+    },
+    "best_val_f1": 0.4000000059604645,
+    "best_threshold": 0.05000000074505806
+  }
+}

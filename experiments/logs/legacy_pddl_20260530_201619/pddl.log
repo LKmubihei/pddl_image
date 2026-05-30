@@ -1,0 +1,61 @@
+[legacy-pddl] Loading cached DINOv3 features...
+[legacy-pddl]   Loaded features from /home/claudeuser/RL4VLA/PDDL/experiments/aepaq_1779595345/features.pt: (7560, 196, 256)
+[legacy-pddl] 
+[legacy-pddl] Compiling PDDL domain...
+[legacy-pddl]   32 atoms, 16 actions
+[legacy-pddl] 
+[legacy-pddl] Enumerating states...
+[legacy-pddl]   840 states, feat_per_state=9
+[legacy-pddl]   Val: 1134, Test: 1134, Pool: 5292
+[legacy-pddl] 
+[legacy-pddl] Preparing transition data...
+[legacy-pddl]   Loaded transition cache: experiments/fewshot_transition_cache_pddl.pt
+[legacy-pddl]   Adjacent transitions: 4053
+[legacy-pddl]   Random pairs: 0
+[legacy-pddl]   Transition samples used per epoch: adjacent=1024 random=0
+[legacy-pddl] 
+[legacy-pddl] ######################################################################
+[legacy-pddl] # FEW-SHOT K=20 labeled visual samples/images
+[legacy-pddl] ######################################################################
+[legacy-pddl]   Train: 20 visual samples covering 20 states
+[legacy-pddl]   Transitions: 1024
+[legacy-pddl]   Conditions: ['adjacent', 'full']
+[legacy-pddl]   Transition mask source: pddl
+[legacy-pddl] 
+[legacy-pddl] ============================================================
+[legacy-pddl] Condition: adjacent
+[legacy-pddl]   C1 + C2: Pointwise + Action Equivariance
+[legacy-pddl]   State samples: 20
+[legacy-pddl]   Transition samples: 1024
+[legacy-pddl]   Model params: {'total': 3508360, 'trainable': 3508360}
+[legacy-pddl]   Seed pos_weight: mean=0.98 min=0.67 max=1.00
+[legacy-pddl] ============================================================
+[legacy-pddl]   [adjacent] Epoch   1/30 | type=0.021 seed=0.021 contrast=0.032 equiv=0.263 pre=0.153 eff=0.186 frame=0.001
+[legacy-pddl]   [adjacent] Epoch   2/30 | type=0.021 seed=0.251 contrast=0.032 equiv=0.004 pre=0.002 eff=0.003 frame=0.000
+[legacy-pddl]   [adjacent] Epoch   3/30 | type=0.021 seed=0.109 contrast=0.032 equiv=0.027 pre=0.003 eff=0.025 frame=0.001
+[legacy-pddl]   [adjacent] Epoch   4/30 | type=0.021 seed=0.092 contrast=0.032 equiv=0.025 pre=0.002 eff=0.023 frame=0.001
+[legacy-pddl]   [adjacent] Epoch   5/30 | type=0.021 seed=0.091 contrast=0.032 equiv=0.025 pre=0.002 eff=0.023 frame=0.001 | F1=0.400 MacroF1=0.386 TypeAcc=0.731 Pred+=1.000 Thr=0.05
+[legacy-pddl]   [adjacent] Epoch   6/30 | type=0.020 seed=0.089 contrast=0.031 equiv=0.025 pre=0.002 eff=0.023 frame=0.001
+[legacy-pddl]   [adjacent] Epoch   7/30 | type=0.020 seed=0.088 contrast=0.030 equiv=0.024 pre=0.002 eff=0.023 frame=0.001
+[legacy-pddl]   [adjacent] Epoch   8/30 | type=0.019 seed=0.086 contrast=0.029 equiv=0.023 pre=0.002 eff=0.022 frame=0.001
+[legacy-pddl]   [adjacent] Epoch   9/30 | type=0.017 seed=0.084 contrast=0.027 equiv=0.021 pre=0.002 eff=0.020 frame=0.001
+[legacy-pddl]   [adjacent] Epoch  10/30 | type=0.013 seed=0.081 contrast=0.024 equiv=0.017 pre=0.002 eff=0.014 frame=0.002 | F1=0.400 MacroF1=0.386 TypeAcc=1.000 Pred+=1.000 Thr=0.05
+[legacy-pddl]   [adjacent] Epoch  11/30 | type=0.008 seed=0.077 contrast=0.021 equiv=0.014 pre=0.002 eff=0.012 frame=0.002
+[legacy-pddl]   [adjacent] Epoch  12/30 | type=0.007 seed=0.071 contrast=0.020 equiv=0.014 pre=0.002 eff=0.012 frame=0.002
+[legacy-pddl]   [adjacent] Epoch  13/30 | type=0.006 seed=0.067 contrast=0.020 equiv=0.014 pre=0.002 eff=0.012 frame=0.002
+[legacy-pddl]   [adjacent] Epoch  14/30 | type=0.005 seed=0.066 contrast=0.020 equiv=0.014 pre=0.002 eff=0.012 frame=0.001
+[legacy-pddl]   [adjacent] Epoch  15/30 | type=0.005 seed=0.064 contrast=0.020 equiv=0.013 pre=0.002 eff=0.012 frame=0.001 | F1=0.400 MacroF1=0.386 TypeAcc=1.000 Pred+=1.000 Thr=0.05
+[legacy-pddl]   [adjacent] Epoch  16/30 | type=0.004 seed=0.064 contrast=0.020 equiv=0.013 pre=0.002 eff=0.012 frame=0.001
+[legacy-pddl]   [adjacent] Epoch  17/30 | type=0.004 seed=0.063 contrast=0.020 equiv=0.013 pre=0.002 eff=0.012 frame=0.001
+[legacy-pddl]   [adjacent] Epoch  18/30 | type=0.004 seed=0.062 contrast=0.020 equiv=0.013 pre=0.002 eff=0.012 frame=0.001
+[legacy-pddl]   [adjacent] Epoch  19/30 | type=0.004 seed=0.062 contrast=0.020 equiv=0.013 pre=0.002 eff=0.011 frame=0.001
+[legacy-pddl]   [adjacent] Epoch  20/30 | type=0.004 seed=0.061 contrast=0.020 equiv=0.013 pre=0.002 eff=0.011 frame=0.001 | F1=0.400 MacroF1=0.386 TypeAcc=1.000 Pred+=1.000 Thr=0.05
+[legacy-pddl]   [adjacent] Epoch  21/30 | type=0.003 seed=0.061 contrast=0.020 equiv=0.013 pre=0.002 eff=0.011 frame=0.001
+[legacy-pddl]   [adjacent] Epoch  22/30 | type=0.003 seed=0.060 contrast=0.020 equiv=0.013 pre=0.002 eff=0.011 frame=0.001
+[legacy-pddl]   [adjacent] Epoch  23/30 | type=0.003 seed=0.060 contrast=0.020 equiv=0.012 pre=0.002 eff=0.011 frame=0.001
+[legacy-pddl]   [adjacent] Epoch  24/30 | type=0.003 seed=0.060 contrast=0.020 equiv=0.012 pre=0.002 eff=0.011 frame=0.001
+[legacy-pddl]   [adjacent] Epoch  25/30 | type=0.003 seed=0.059 contrast=0.020 equiv=0.012 pre=0.002 eff=0.011 frame=0.001 | F1=0.400 MacroF1=0.386 TypeAcc=1.000 Pred+=1.000 Thr=0.05
+[legacy-pddl]   [adjacent] Epoch  26/30 | type=0.003 seed=0.059 contrast=0.020 equiv=0.012 pre=0.002 eff=0.011 frame=0.001
+[legacy-pddl]   [adjacent] Epoch  27/30 | type=0.003 seed=0.059 contrast=0.020 equiv=0.012 pre=0.002 eff=0.011 frame=0.001
+[legacy-pddl]   [adjacent] Epoch  28/30 | type=0.003 seed=0.059 contrast=0.020 equiv=0.012 pre=0.002 eff=0.011 frame=0.001
+[legacy-pddl]   [adjacent] Epoch  29/30 | type=0.003 seed=0.059 contrast=0.020 equiv=0.012 pre=0.002 eff=0.011 frame=0.001

@@ -1,0 +1,103 @@
+[gpu0-state_diff] Loading cached DINOv3 features...
+[gpu0-state_diff]   Loaded features from /home/claudeuser/RL4VLA/PDDL/experiments/aepaq_1779595345/features.pt: (7560, 196, 256)
+[gpu0-state_diff] 
+[gpu0-state_diff] Compiling PDDL domain...
+[gpu0-state_diff]   32 atoms, 16 actions
+[gpu0-state_diff] 
+[gpu0-state_diff] Enumerating states...
+[gpu0-state_diff]   840 states, feat_per_state=9
+[gpu0-state_diff]   Val: 1134, Test: 1134, Pool: 5292
+[gpu0-state_diff] 
+[gpu0-state_diff] Preparing transition data...
+[gpu0-state_diff]   Building transition cache...
+[gpu0-state_diff]   Adjacent transitions: 4053
+[gpu0-state_diff]   Random pairs: 0
+[gpu0-state_diff]   Transition masks (state_diff): pre=1.00 add=2.00 del=2.00 frame=28.00
+[gpu0-state_diff]   Saved transition cache: experiments/fewshot_transition_cache_state_diff.pt
+[gpu0-state_diff]   Adjacent transitions: 4053
+[gpu0-state_diff]   Random pairs: 0
+[gpu0-state_diff]   Transition samples used per epoch: adjacent=1024 random=0
+[gpu0-state_diff] 
+[gpu0-state_diff] ######################################################################
+[gpu0-state_diff] # FEW-SHOT K=20 labeled visual samples/images
+[gpu0-state_diff] ######################################################################
+[gpu0-state_diff]   Train: 20 visual samples covering 20 states
+[gpu0-state_diff]   Transitions: 1024
+[gpu0-state_diff]   Conditions: ['static', 'adjacent', 'full']
+[gpu0-state_diff]   Transition mask source: state_diff
+[gpu0-state_diff] 
+[gpu0-state_diff] ============================================================
+[gpu0-state_diff] Condition: static
+[gpu0-state_diff]   C1: Pointwise Correctness only
+[gpu0-state_diff]   State samples: 20
+[gpu0-state_diff]   Transition samples: 0
+[gpu0-state_diff]   Model params: {'total': 3081093, 'trainable': 3081093}
+[gpu0-state_diff]   Seed pos_weight: mean=4.37 min=0.67 max=19.00
+[gpu0-state_diff] ============================================================
+[gpu0-state_diff]   [static] Epoch   1/40 | type=0.693 seed=1.044 contrast=1.044
+[gpu0-state_diff]   [static] Epoch   2/40 | type=0.679 seed=1.040 contrast=1.043
+[gpu0-state_diff]   [static] Epoch   3/40 | type=0.662 seed=1.040 contrast=1.044
+[gpu0-state_diff]   [static] Epoch   4/40 | type=0.642 seed=1.038 contrast=1.044
+[gpu0-state_diff]   [static] Epoch   5/40 | type=0.621 seed=1.037 contrast=1.044 | F1=0.400 MacroF1=0.386 TypeAcc=0.960 Pred+=1.000 Thr=0.05
+[gpu0-state_diff]   [static] Epoch   6/40 | type=0.588 seed=1.036 contrast=1.044
+[gpu0-state_diff]   [static] Epoch   7/40 | type=0.552 seed=1.035 contrast=1.045
+[gpu0-state_diff]   [static] Epoch   8/40 | type=0.510 seed=1.034 contrast=1.045
+[gpu0-state_diff]   [static] Epoch   9/40 | type=0.459 seed=1.033 contrast=1.044
+[gpu0-state_diff]   [static] Epoch  10/40 | type=0.404 seed=1.032 contrast=1.044 | F1=0.400 MacroF1=0.386 TypeAcc=0.987 Pred+=1.000 Thr=0.05
+[gpu0-state_diff]   [static] Epoch  11/40 | type=0.353 seed=1.032 contrast=1.043
+[gpu0-state_diff]   [static] Epoch  12/40 | type=0.304 seed=1.031 contrast=1.042
+[gpu0-state_diff]   [static] Epoch  13/40 | type=0.256 seed=1.030 contrast=1.040
+[gpu0-state_diff]   [static] Epoch  14/40 | type=0.214 seed=1.029 contrast=1.037
+[gpu0-state_diff]   [static] Epoch  15/40 | type=0.183 seed=1.028 contrast=1.036 | F1=0.400 MacroF1=0.386 TypeAcc=0.999 Pred+=1.000 Thr=0.05
+[gpu0-state_diff]   [static] Epoch  16/40 | type=0.156 seed=1.028 contrast=1.035
+[gpu0-state_diff]   [static] Epoch  17/40 | type=0.130 seed=1.027 contrast=1.033
+[gpu0-state_diff]   [static] Epoch  18/40 | type=0.113 seed=1.026 contrast=1.031
+[gpu0-state_diff]   [static] Epoch  19/40 | type=0.094 seed=1.025 contrast=1.032
+[gpu0-state_diff]   [static] Epoch  20/40 | type=0.080 seed=1.024 contrast=1.032 | F1=0.400 MacroF1=0.386 TypeAcc=1.000 Pred+=1.000 Thr=0.05
+[gpu0-state_diff]   [static] Epoch  21/40 | type=0.071 seed=1.024 contrast=1.032
+[gpu0-state_diff]   [static] Epoch  22/40 | type=0.062 seed=1.023 contrast=1.033
+[gpu0-state_diff]   [static] Epoch  23/40 | type=0.055 seed=1.022 contrast=1.035
+[gpu0-state_diff]   [static] Epoch  24/40 | type=0.049 seed=1.021 contrast=1.035
+[gpu0-state_diff]   [static] Epoch  25/40 | type=0.043 seed=1.021 contrast=1.035 | F1=0.400 MacroF1=0.386 TypeAcc=1.000 Pred+=1.000 Thr=0.05
+[gpu0-state_diff]   [static] Epoch  26/40 | type=0.042 seed=1.020 contrast=1.035
+[gpu0-state_diff]   [static] Epoch  27/40 | type=0.038 seed=1.020 contrast=1.036
+[gpu0-state_diff]   [static] Epoch  28/40 | type=0.036 seed=1.019 contrast=1.036
+[gpu0-state_diff]   [static] Epoch  29/40 | type=0.032 seed=1.019 contrast=1.035
+[gpu0-state_diff]   [static] Epoch  30/40 | type=0.032 seed=1.019 contrast=1.036 | F1=0.400 MacroF1=0.386 TypeAcc=1.000 Pred+=1.000 Thr=0.05
+[gpu0-state_diff]   [static] Epoch  31/40 | type=0.031 seed=1.019 contrast=1.037
+[gpu0-state_diff]   [static] Epoch  32/40 | type=0.030 seed=1.018 contrast=1.037
+[gpu0-state_diff]   [static] Epoch  33/40 | type=0.030 seed=1.018 contrast=1.036
+[gpu0-state_diff]   [static] Epoch  34/40 | type=0.030 seed=1.018 contrast=1.036
+[gpu0-state_diff]   [static] Epoch  35/40 | type=0.029 seed=1.018 contrast=1.036 | F1=0.400 MacroF1=0.386 TypeAcc=1.000 Pred+=1.000 Thr=0.05
+[gpu0-state_diff]   [static] Epoch  36/40 | type=0.028 seed=1.018 contrast=1.036
+[gpu0-state_diff]   [static] Epoch  37/40 | type=0.028 seed=1.018 contrast=1.037
+[gpu0-state_diff]   [static] Epoch  38/40 | type=0.028 seed=1.018 contrast=1.037
+[gpu0-state_diff]   [static] Epoch  39/40 | type=0.027 seed=1.018 contrast=1.037
+[gpu0-state_diff]   [static] Epoch  40/40 | type=0.028 seed=1.018 contrast=1.037 | F1=0.400 MacroF1=0.386 TypeAcc=1.000 Pred+=1.000 Thr=0.05
+[gpu0-state_diff] 
+[gpu0-state_diff] ============================================================
+[gpu0-state_diff] Condition: adjacent
+[gpu0-state_diff]   C1 + C2: Pointwise + Action Equivariance
+[gpu0-state_diff]   State samples: 20
+[gpu0-state_diff]   Transition samples: 1024
+[gpu0-state_diff]   Model params: {'total': 3081093, 'trainable': 3081093}
+[gpu0-state_diff]   Seed pos_weight: mean=4.37 min=0.67 max=19.00
+[gpu0-state_diff] ============================================================
+[gpu0-state_diff]   [adjacent] Epoch   1/40 | type=0.690 seed=1.039 contrast=1.054
+[gpu0-state_diff]   [adjacent] Epoch   2/40 | type=0.665 seed=1.038 contrast=1.053
+[gpu0-state_diff]   [adjacent] Epoch   3/40 | type=0.640 seed=1.035 contrast=1.052
+[gpu0-state_diff]   [adjacent] Epoch   4/40 | type=0.614 seed=1.034 contrast=1.052
+[gpu0-state_diff]   [adjacent] Epoch   5/40 | type=0.579 seed=1.032 contrast=1.052 | F1=0.400 MacroF1=0.386 TypeAcc=0.997 Pred+=1.000 Thr=0.05
+[gpu0-state_diff]   [adjacent] Epoch   6/40 | type=0.540 seed=1.031 contrast=1.053
+[gpu0-state_diff]   [adjacent] Epoch   7/40 | type=0.490 seed=1.030 contrast=1.053
+[gpu0-state_diff]   [adjacent] Epoch   8/40 | type=0.437 seed=1.028 contrast=1.053
+[gpu0-state_diff]   [adjacent] Epoch   9/40 | type=0.383 seed=1.027 contrast=1.054
+[gpu0-state_diff]   [adjacent] Epoch  10/40 | type=0.330 seed=1.026 contrast=1.054 | F1=0.400 MacroF1=0.386 TypeAcc=1.000 Pred+=1.000 Thr=0.05
+[gpu0-state_diff]   [adjacent] Epoch  11/40 | type=0.008 seed=0.031 contrast=0.032 equiv=0.856 pre=0.244 eff=0.728 frame=0.011
+[gpu0-state_diff]   [adjacent] Epoch  12/40 | type=0.010 seed=0.032 contrast=0.033 equiv=0.824 pre=0.178 eff=0.730 frame=0.010
+[gpu0-state_diff]   [adjacent] Epoch  13/40 | type=0.006 seed=0.032 contrast=0.033 equiv=0.820 pre=0.177 eff=0.724 frame=0.014
+[gpu0-state_diff]   [adjacent] Epoch  14/40 | type=0.005 seed=0.032 contrast=0.032 equiv=0.820 pre=0.176 eff=0.723 frame=0.018
+[gpu0-state_diff]   [adjacent] Epoch  15/40 | type=0.003 seed=0.032 contrast=0.033 equiv=0.817 pre=0.178 eff=0.718 frame=0.020 | F1=0.400 MacroF1=0.386 TypeAcc=0.999 Pred+=1.000 Thr=0.05
+[gpu0-state_diff]   [adjacent] Epoch  16/40 | type=0.003 seed=0.032 contrast=0.032 equiv=0.817 pre=0.176 eff=0.718 frame=0.021
+[gpu0-state_diff]   [adjacent] Epoch  17/40 | type=0.003 seed=0.032 contrast=0.032 equiv=0.815 pre=0.173 eff=0.717 frame=0.021
+[gpu0-state_diff]   [adjacent] Epoch  18/40 | type=0.003 seed=0.032 contrast=0.032 equiv=0.813 pre=0.175 eff=0.714 frame=0.024

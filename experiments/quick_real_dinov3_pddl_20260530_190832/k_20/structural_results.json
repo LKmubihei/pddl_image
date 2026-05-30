@@ -1,0 +1,59 @@
+{
+  "static": {
+    "condition": "static",
+    "description": "C1: Pointwise Correctness only",
+    "transition_mask_source": "pddl",
+    "test": {
+      "precision": 0.25,
+      "recall": 1.0,
+      "f1": 0.4000000059604645,
+      "macro_f1": 0.38202112913131714,
+      "exact_match": 0.0,
+      "type_acc": 0.9207451343536377,
+      "threshold": 0.05000000074505806,
+      "pred_pos_rate": 1.0,
+      "label_pos_rate": 0.25,
+      "avg_prob": 0.48861268162727356
+    },
+    "best_val_f1": 0.4000000059604645,
+    "best_threshold": 0.05000000074505806
+  },
+  "adjacent": {
+    "condition": "adjacent",
+    "description": "C1 + C2: Pointwise + Action Equivariance",
+    "transition_mask_source": "pddl",
+    "test": {
+      "precision": 0.25,
+      "recall": 1.0,
+      "f1": 0.4000000059604645,
+      "macro_f1": 0.38202112913131714,
+      "exact_match": 0.0,
+      "type_acc": 1.0,
+      "threshold": 0.05000000074505806,
+      "pred_pos_rate": 1.0,
+      "label_pos_rate": 0.25,
+      "avg_prob": 0.9919735193252563
+    },
+    "best_val_f1": 0.4000000059604645,
+    "best_threshold": 0.05000000074505806
+  },
+  "full": {
+    "condition": "full",
+    "description": "C1 + C2 + C3: Pointwise + Equivariance + Counterfactual",
+    "transition_mask_source": "pddl",
+    "test": {
+      "precision": 0.25,
+      "recall": 1.0,
+      "f1": 0.4000000059604645,
+      "macro_f1": 0.38202112913131714,
+      "exact_match": 0.0,
+      "type_acc": 1.0,
+      "threshold": 0.05000000074505806,
+      "pred_pos_rate": 1.0,
+      "label_pos_rate": 0.25,
+      "avg_prob": 0.9891678094863892
+    },
+    "best_val_f1": 0.4000000059604645,
+    "best_threshold": 0.05000000074505806
+  }
+}

@@ -1,0 +1,36 @@
+[state_diff-nowarm] Loading cached DINOv3 features...
+[state_diff-nowarm]   Loaded features from /home/claudeuser/RL4VLA/PDDL/experiments/aepaq_1779595345/features.pt: (7560, 196, 256)
+[state_diff-nowarm] 
+[state_diff-nowarm] Compiling PDDL domain...
+[state_diff-nowarm]   32 atoms, 16 actions
+[state_diff-nowarm] 
+[state_diff-nowarm] Enumerating states...
+[state_diff-nowarm]   840 states, feat_per_state=9
+[state_diff-nowarm]   Val: 1134, Test: 1134, Pool: 5292
+[state_diff-nowarm] 
+[state_diff-nowarm] Preparing transition data...
+[state_diff-nowarm]   Loaded transition cache: experiments/fewshot_transition_cache_state_diff.pt
+[state_diff-nowarm]   Adjacent transitions: 4053
+[state_diff-nowarm]   Random pairs: 0
+[state_diff-nowarm]   Transition samples used per epoch: adjacent=1024 random=0
+[state_diff-nowarm] 
+[state_diff-nowarm] ######################################################################
+[state_diff-nowarm] # FEW-SHOT K=20 labeled visual samples/images
+[state_diff-nowarm] ######################################################################
+[state_diff-nowarm]   Train: 20 visual samples covering 20 states
+[state_diff-nowarm]   Transitions: 1024
+[state_diff-nowarm]   Conditions: ['adjacent', 'full']
+[state_diff-nowarm]   Transition mask source: state_diff
+[state_diff-nowarm] 
+[state_diff-nowarm] ============================================================
+[state_diff-nowarm] Condition: adjacent
+[state_diff-nowarm]   C1 + C2: Pointwise + Action Equivariance
+[state_diff-nowarm]   State samples: 20
+[state_diff-nowarm]   Transition samples: 1024
+[state_diff-nowarm]   Model params: {'total': 3081093, 'trainable': 3081093}
+[state_diff-nowarm]   Seed pos_weight: mean=4.37 min=0.67 max=19.00
+[state_diff-nowarm] ============================================================
+[state_diff-nowarm]   [adjacent] Epoch   1/40 | type=0.021 seed=0.032 contrast=0.032 equiv=0.858 pre=0.255 eff=0.730 frame=0.001
+[state_diff-nowarm]   [adjacent] Epoch   2/40 | type=0.021 seed=0.032 contrast=0.032 equiv=0.826 pre=0.179 eff=0.735 frame=0.003
+[state_diff-nowarm]   [adjacent] Epoch   3/40 | type=0.020 seed=0.032 contrast=0.032 equiv=0.821 pre=0.177 eff=0.728 frame=0.010
+[state_diff-nowarm]   [adjacent] Epoch   4/40 | type=0.019 seed=0.032 contrast=0.032 equiv=0.820 pre=0.175 eff=0.728 frame=0.010

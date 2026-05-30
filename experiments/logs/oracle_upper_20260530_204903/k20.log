@@ -1,0 +1,52 @@
+[K20-gpu0] Loading cached DINOv3 features...
+[K20-gpu0]   Loaded features from /home/claudeuser/RL4VLA/PDDL/experiments/aepaq_1779595345/features.pt: (7560, 196, 256)
+[K20-gpu0] 
+[K20-gpu0] Compiling PDDL domain...
+[K20-gpu0]   32 atoms, 16 actions
+[K20-gpu0] 
+[K20-gpu0] Enumerating states...
+[K20-gpu0]   840 states, feat_per_state=9
+[K20-gpu0]   Val: 1134, Test: 1134, Pool: 5292
+[K20-gpu0] 
+[K20-gpu0] Preparing transition data...
+[K20-gpu0]   Loaded transition cache: experiments/fewshot_transition_cache_state_diff.pt
+[K20-gpu0]   Adjacent transitions: 4053
+[K20-gpu0]   Random pairs: 0
+[K20-gpu0] 
+[K20-gpu0] ######################################################################
+[K20-gpu0] # FEW-SHOT K=20 labeled visual samples/images
+[K20-gpu0] ######################################################################
+[K20-gpu0]   Train: 20 visual samples covering 20 states
+[K20-gpu0]   Transitions: 4053
+[K20-gpu0]   Conditions: ['full']
+[K20-gpu0]   Transition mask source: state_diff
+[K20-gpu0] 
+[K20-gpu0] ============================================================
+[K20-gpu0] Condition: full
+[K20-gpu0]   C1 + C2 + C3: Pointwise + Equivariance + Counterfactual
+[K20-gpu0]   State samples: 20
+[K20-gpu0]   Transition samples: 4053
+[K20-gpu0]   Model params: {'total': 3508360, 'trainable': 3508360}
+[K20-gpu0]   Seed pos_weight: mean=4.37 min=0.67 max=19.00
+[K20-gpu0] ============================================================
+[K20-gpu0]   [full] Epoch   1/80 | type=0.005 seed=0.008 contrast=0.008 equiv=0.853 pre=0.201 eff=0.748 frame=0.009 cf=1.533 cf_viol=0.992
+[K20-gpu0]   [full] Epoch   2/80 | type=0.005 seed=0.008 contrast=0.008 equiv=0.731 pre=0.167 eff=0.599 frame=0.096 cf=1.223 cf_viol=0.962
+[K20-gpu0]   [full] Epoch   3/80 | type=0.005 seed=0.007 contrast=0.007 equiv=0.423 pre=0.053 eff=0.314 frame=0.165 cf=0.562 cf_viol=0.787
+[K20-gpu0]   [full] Epoch   4/80 | type=0.004 seed=0.007 contrast=0.006 equiv=0.209 pre=0.033 eff=0.118 frame=0.149 cf=0.287 cf_viol=0.479
+[K20-gpu0]   [full] Epoch   5/80 | type=0.004 seed=0.006 contrast=0.005 equiv=0.094 pre=0.018 eff=0.032 frame=0.104 cf=0.196 cf_viol=0.281 | F1=0.766 MacroF1=0.758 TypeAcc=0.837 Pred+=0.401 Thr=0.05
+[K20-gpu0]   [full] Epoch   6/80 | type=0.004 seed=0.005 contrast=0.005 equiv=0.061 pre=0.013 eff=0.012 frame=0.085 cf=0.178 cf_viol=0.239
+[K20-gpu0]   [full] Epoch   7/80 | type=0.004 seed=0.004 contrast=0.005 equiv=0.049 pre=0.007 eff=0.008 frame=0.076 cf=0.172 cf_viol=0.227
+[K20-gpu0]   [full] Epoch   8/80 | type=0.003 seed=0.003 contrast=0.005 equiv=0.046 pre=0.009 eff=0.012 frame=0.059 cf=0.172 cf_viol=0.226
+[K20-gpu0]   [full] Epoch   9/80 | type=0.003 seed=0.002 contrast=0.005 equiv=0.024 pre=0.003 eff=0.004 frame=0.038 cf=0.166 cf_viol=0.215
+[K20-gpu0]   [full] Epoch  10/80 | type=0.003 seed=0.001 contrast=0.004 equiv=0.017 pre=0.003 eff=0.001 frame=0.028 cf=0.164 cf_viol=0.210 | F1=0.915 MacroF1=0.891 TypeAcc=0.985 Pred+=0.294 Thr=0.05
+[K20-gpu0]   [full] Epoch  11/80 | type=0.003 seed=0.001 contrast=0.005 equiv=0.015 pre=0.002 eff=0.001 frame=0.026 cf=0.163 cf_viol=0.209
+[K20-gpu0]   [full] Epoch  12/80 | type=0.002 seed=0.001 contrast=0.004 equiv=0.045 pre=0.010 eff=0.021 frame=0.038 cf=0.178 cf_viol=0.240
+[K20-gpu0]   [full] Epoch  13/80 | type=0.003 seed=0.002 contrast=0.004 equiv=0.035 pre=0.005 eff=0.015 frame=0.035 cf=0.170 cf_viol=0.224
+[K20-gpu0]   [full] Epoch  14/80 | type=0.002 seed=0.001 contrast=0.004 equiv=0.017 pre=0.001 eff=0.004 frame=0.025 cf=0.163 cf_viol=0.208
+[K20-gpu0]   [full] Epoch  15/80 | type=0.002 seed=0.001 contrast=0.004 equiv=0.013 pre=0.001 eff=0.001 frame=0.022 cf=0.162 cf_viol=0.207 | F1=0.931 MacroF1=0.908 TypeAcc=0.998 Pred+=0.285 Thr=0.05
+[K20-gpu0]   [full] Epoch  16/80 | type=0.002 seed=0.001 contrast=0.004 equiv=0.010 pre=0.001 eff=0.001 frame=0.018 cf=0.162 cf_viol=0.205
+[K20-gpu0]   [full] Epoch  17/80 | type=0.002 seed=0.000 contrast=0.005 equiv=0.007 pre=0.000 eff=0.001 frame=0.011 cf=0.161 cf_viol=0.204
+[K20-gpu0]   [full] Epoch  18/80 | type=0.001 seed=0.000 contrast=0.005 equiv=0.005 pre=0.000 eff=0.001 frame=0.009 cf=0.160 cf_viol=0.203
+[K20-gpu0]   [full] Epoch  19/80 | type=0.001 seed=0.000 contrast=0.005 equiv=0.004 pre=0.000 eff=0.000 frame=0.008 cf=0.161 cf_viol=0.204
+[K20-gpu0]   [full] Epoch  20/80 | type=0.001 seed=0.000 contrast=0.005 equiv=0.004 pre=0.000 eff=0.000 frame=0.007 cf=0.160 cf_viol=0.203 | F1=0.974 MacroF1=0.963 TypeAcc=0.998 Pred+=0.260 Thr=0.05
+[K20-gpu0]   [full] Epoch  21/80 | type=0.001 seed=0.000 contrast=0.005 equiv=0.003 pre=0.000 eff=0.000 frame=0.006 cf=0.160 cf_viol=0.202

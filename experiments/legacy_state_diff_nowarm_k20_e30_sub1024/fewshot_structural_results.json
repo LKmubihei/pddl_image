@@ -1,0 +1,76 @@
+{
+  "20": {
+    "_metadata": {
+      "k_requested": 20,
+      "fewshot_unit": "image",
+      "n_labeled_samples": 20,
+      "n_labeled_states": 20,
+      "feat_per_state": 9,
+      "transition_mask_source": "state_diff",
+      "conditions": [
+        "adjacent",
+        "full"
+      ],
+      "transition_scope": "all_pool",
+      "transition_warmup_epochs": 0,
+      "w_equiv": 1.0,
+      "w_cf": 0.3,
+      "w_contrast": 0.0,
+      "pos_weight_max": 20.0,
+      "scoring_head_type": "legacy",
+      "max_transition_samples": 1024,
+      "feature_source": "cached_dinov3",
+      "feature_cache_path": "/home/claudeuser/RL4VLA/PDDL/experiments/aepaq_1779595345/features.pt",
+      "feature_shape": [
+        7560,
+        196,
+        256
+      ],
+      "direct_object_tokens": false,
+      "transition_supervision": "oracle_state_diff",
+      "object_type_source": "oracle",
+      "domain": "/home/claudeuser/ViPlan/data/planning/blocksworld/domain.pddl",
+      "problem": null,
+      "num_objects": 8,
+      "num_canonical_atoms": 32,
+      "train_seed": 42,
+      "split_seed": 42,
+      "threshold_source": "validation",
+      "checkpoint_source": null
+    },
+    "adjacent": {
+      "test": {
+        "precision": 0.7413793206214905,
+        "recall": 0.9906305074691772,
+        "f1": 0.8480702042579651,
+        "macro_f1": 0.8106386661529541,
+        "exact_match": 0.0873015895485878,
+        "type_acc": 0.9739859104156494,
+        "threshold": 0.05000000074505806,
+        "pred_pos_rate": 0.3340498208999634,
+        "label_pos_rate": 0.25,
+        "avg_prob": 0.2768091857433319
+      },
+      "best_val_f1": 0.817288339138031,
+      "best_threshold": 0.05000000074505806,
+      "transition_mask_source": "state_diff"
+    },
+    "full": {
+      "test": {
+        "precision": 0.8069484233856201,
+        "recall": 0.9933862686157227,
+        "f1": 0.8905138373374939,
+        "macro_f1": 0.856345534324646,
+        "exact_match": 0.3262786567211151,
+        "type_acc": 0.9834656119346619,
+        "threshold": 0.05000000074505806,
+        "pred_pos_rate": 0.3077601492404938,
+        "label_pos_rate": 0.25,
+        "avg_prob": 0.2763606309890747
+      },
+      "best_val_f1": 0.8576067686080933,
+      "best_threshold": 0.05000000074505806,
+      "transition_mask_source": "state_diff"
+    }
+  }
+}
