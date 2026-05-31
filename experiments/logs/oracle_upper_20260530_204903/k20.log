@@ -50,3 +50,7 @@
 [K20-gpu0]   [full] Epoch  19/80 | type=0.001 seed=0.000 contrast=0.005 equiv=0.004 pre=0.000 eff=0.000 frame=0.008 cf=0.161 cf_viol=0.204
 [K20-gpu0]   [full] Epoch  20/80 | type=0.001 seed=0.000 contrast=0.005 equiv=0.004 pre=0.000 eff=0.000 frame=0.007 cf=0.160 cf_viol=0.203 | F1=0.974 MacroF1=0.963 TypeAcc=0.998 Pred+=0.260 Thr=0.05
 [K20-gpu0]   [full] Epoch  21/80 | type=0.001 seed=0.000 contrast=0.005 equiv=0.003 pre=0.000 eff=0.000 frame=0.006 cf=0.160 cf_viol=0.202
+[K20-gpu0]   [full] Epoch  22/80 | type=0.001 seed=0.000 contrast=0.005 equiv=0.003 pre=0.000 eff=0.000 frame=0.005 cf=0.160 cf_viol=0.202
+[K20-gpu0]   [full] Epoch  23/80 | type=0.001 seed=0.000 contrast=0.005 equiv=0.003 pre=0.000 eff=0.000 frame=0.005 cf=0.160 cf_viol=0.202
+[K20-gpu0]   [full] Epoch  24/80 | type=0.001 seed=0.000 contrast=0.005 equiv=0.003 pre=0.000 eff=0.000 frame=0.005 cf=0.160 cf_viol=0.203
+[K20-gpu0]   [full] Epoch  25/80 | type=0.001 seed=0.000 contrast=0.005 equiv=0.009 pre=0.005 eff=0.003 frame=0.008 cf=0.163 cf_viol=0.208 | F1=0.960 MacroF1=0.947 TypeAcc=0.994 Pred+=0.267 Thr=0.05

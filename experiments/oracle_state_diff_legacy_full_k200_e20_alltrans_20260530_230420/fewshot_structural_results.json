@@ -1,0 +1,58 @@
+{
+  "200": {
+    "_metadata": {
+      "k_requested": 200,
+      "fewshot_unit": "image",
+      "n_labeled_samples": 200,
+      "n_labeled_states": 171,
+      "feat_per_state": 9,
+      "transition_mask_source": "state_diff",
+      "conditions": [
+        "full"
+      ],
+      "transition_scope": "all_pool",
+      "transition_warmup_epochs": 0,
+      "w_equiv": 1.0,
+      "w_cf": 0.3,
+      "w_contrast": 0.0,
+      "pos_weight_max": 20.0,
+      "scoring_head_type": "legacy",
+      "max_transition_samples": 0,
+      "feature_source": "cached_dinov3",
+      "feature_cache_path": "/home/claudeuser/RL4VLA/PDDL/experiments/aepaq_1779595345/features.pt",
+      "feature_shape": [
+        7560,
+        196,
+        256
+      ],
+      "direct_object_tokens": false,
+      "transition_supervision": "oracle_state_diff",
+      "object_type_source": "oracle",
+      "domain": "/home/claudeuser/ViPlan/data/planning/blocksworld/domain.pddl",
+      "problem": null,
+      "num_objects": 8,
+      "num_canonical_atoms": 32,
+      "train_seed": 42,
+      "split_seed": 42,
+      "threshold_source": "validation",
+      "checkpoint_source": null
+    },
+    "full": {
+      "test": {
+        "precision": 0.9657527208328247,
+        "recall": 0.9977954030036926,
+        "f1": 0.9815126061439514,
+        "macro_f1": 0.9696337580680847,
+        "exact_match": 0.8386243581771851,
+        "type_acc": 0.9995591044425964,
+        "threshold": 0.05000000074505806,
+        "pred_pos_rate": 0.2582947611808777,
+        "label_pos_rate": 0.25,
+        "avg_prob": 0.2519368529319763
+      },
+      "best_val_f1": 0.9669965505599976,
+      "best_threshold": 0.05000000074505806,
+      "transition_mask_source": "state_diff"
+    }
+  }
+}

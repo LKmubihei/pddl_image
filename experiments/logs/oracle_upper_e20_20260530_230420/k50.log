@@ -1,0 +1,77 @@
+[K50-gpu1] Loading cached DINOv3 features...
+[K50-gpu1]   Loaded features from /home/claudeuser/RL4VLA/PDDL/experiments/aepaq_1779595345/features.pt: (7560, 196, 256)
+[K50-gpu1] 
+[K50-gpu1] Compiling PDDL domain...
+[K50-gpu1]   32 atoms, 16 actions
+[K50-gpu1] 
+[K50-gpu1] Enumerating states...
+[K50-gpu1]   840 states, feat_per_state=9
+[K50-gpu1]   Val: 1134, Test: 1134, Pool: 5292
+[K50-gpu1] 
+[K50-gpu1] Preparing transition data...
+[K50-gpu1]   Loaded transition cache: experiments/fewshot_transition_cache_state_diff.pt
+[K50-gpu1]   Adjacent transitions: 4053
+[K50-gpu1]   Random pairs: 0
+[K50-gpu1] 
+[K50-gpu1] ######################################################################
+[K50-gpu1] # FEW-SHOT K=50 labeled visual samples/images
+[K50-gpu1] ######################################################################
+[K50-gpu1]   Train: 50 visual samples covering 47 states
+[K50-gpu1]   Transitions: 4053
+[K50-gpu1]   Conditions: ['full']
+[K50-gpu1]   Transition mask source: state_diff
+[K50-gpu1] 
+[K50-gpu1] ============================================================
+[K50-gpu1] Condition: full
+[K50-gpu1]   C1 + C2 + C3: Pointwise + Equivariance + Counterfactual
+[K50-gpu1]   State samples: 50
+[K50-gpu1]   Transition samples: 4053
+[K50-gpu1]   Model params: {'total': 3508360, 'trainable': 3508360}
+[K50-gpu1]   Seed pos_weight: mean=4.20 min=0.61 max=9.00
+[K50-gpu1] ============================================================
+[K50-gpu1]   [full] Epoch   1/20 | type=0.011 seed=0.016 contrast=0.016 equiv=0.846 pre=0.199 eff=0.742 frame=0.010 cf=1.521 cf_viol=0.984
+[K50-gpu1]   [full] Epoch   2/20 | type=0.010 seed=0.017 contrast=0.016 equiv=0.765 pre=0.179 eff=0.636 frame=0.078 cf=1.304 cf_viol=0.973
+[K50-gpu1]   [full] Epoch   3/20 | type=0.008 seed=0.014 contrast=0.013 equiv=0.444 pre=0.054 eff=0.344 frame=0.146 cf=0.620 cf_viol=0.819
+[K50-gpu1]   [full] Epoch   4/20 | type=0.007 seed=0.013 contrast=0.014 equiv=0.230 pre=0.033 eff=0.138 frame=0.151 cf=0.299 cf_viol=0.510
+[K50-gpu1]   [full] Epoch   5/20 | type=0.006 seed=0.010 contrast=0.010 equiv=0.096 pre=0.020 eff=0.033 frame=0.105 cf=0.197 cf_viol=0.290 | F1=0.741 MacroF1=0.725 TypeAcc=1.000 Pred+=0.423 Thr=0.05
+[K50-gpu1]   [full] Epoch   6/20 | type=0.005 seed=0.007 contrast=0.010 equiv=0.064 pre=0.011 eff=0.016 frame=0.085 cf=0.178 cf_viol=0.237
+[K50-gpu1]   [full] Epoch   7/20 | type=0.005 seed=0.007 contrast=0.010 equiv=0.050 pre=0.006 eff=0.009 frame=0.076 cf=0.172 cf_viol=0.226
+[K50-gpu1]   [full] Epoch   8/20 | type=0.004 seed=0.005 contrast=0.009 equiv=0.044 pre=0.007 eff=0.011 frame=0.060 cf=0.170 cf_viol=0.224
+[K50-gpu1]   [full] Epoch   9/20 | type=0.003 seed=0.003 contrast=0.010 equiv=0.031 pre=0.005 eff=0.007 frame=0.043 cf=0.168 cf_viol=0.218
+[K50-gpu1]   [full] Epoch  10/20 | type=0.003 seed=0.002 contrast=0.010 equiv=0.021 pre=0.003 eff=0.003 frame=0.034 cf=0.164 cf_viol=0.211 | F1=0.901 MacroF1=0.877 TypeAcc=1.000 Pred+=0.303 Thr=0.05
+[K50-gpu1]   [full] Epoch  11/20 | type=0.003 seed=0.003 contrast=0.010 equiv=0.017 pre=0.001 eff=0.002 frame=0.030 cf=0.163 cf_viol=0.209
+[K50-gpu1]   [full] Epoch  12/20 | type=0.002 seed=0.003 contrast=0.009 equiv=0.016 pre=0.001 eff=0.001 frame=0.027 cf=0.162 cf_viol=0.207
+[K50-gpu1]   [full] Epoch  13/20 | type=0.002 seed=0.003 contrast=0.009 equiv=0.015 pre=0.001 eff=0.001 frame=0.026 cf=0.161 cf_viol=0.206
+[K50-gpu1]   [full] Epoch  14/20 | type=0.002 seed=0.003 contrast=0.009 equiv=0.014 pre=0.001 eff=0.001 frame=0.025 cf=0.161 cf_viol=0.205
+[K50-gpu1]   [full] Epoch  15/20 | type=0.002 seed=0.002 contrast=0.009 equiv=0.013 pre=0.001 eff=0.001 frame=0.024 cf=0.160 cf_viol=0.204 | F1=0.927 MacroF1=0.904 TypeAcc=1.000 Pred+=0.288 Thr=0.05
+[K50-gpu1]   [full] Epoch  16/20 | type=0.002 seed=0.002 contrast=0.009 equiv=0.013 pre=0.001 eff=0.001 frame=0.023 cf=0.161 cf_viol=0.204
+[K50-gpu1]   [full] Epoch  17/20 | type=0.002 seed=0.002 contrast=0.009 equiv=0.013 pre=0.000 eff=0.001 frame=0.023 cf=0.160 cf_viol=0.203
+[K50-gpu1]   [full] Epoch  18/20 | type=0.002 seed=0.002 contrast=0.009 equiv=0.012 pre=0.000 eff=0.001 frame=0.023 cf=0.160 cf_viol=0.203
+[K50-gpu1]   [full] Epoch  19/20 | type=0.002 seed=0.002 contrast=0.009 equiv=0.012 pre=0.000 eff=0.001 frame=0.023 cf=0.160 cf_viol=0.203
+[K50-gpu1]   [full] Epoch  20/20 | type=0.002 seed=0.002 contrast=0.009 equiv=0.012 pre=0.000 eff=0.001 frame=0.023 cf=0.160 cf_viol=0.202 | F1=0.930 MacroF1=0.907 TypeAcc=1.000 Pred+=0.286 Thr=0.05
+[K50-gpu1] 
+[K50-gpu1] ==========================================================================================
+[K50-gpu1] STRUCTURAL EXPERIMENT: Does action structure improve grounding?
+[K50-gpu1]   All conditions use the SAME labeled frames.
+[K50-gpu1]   Difference is ONLY in transition constraints.
+[K50-gpu1] ==========================================================================================
+[K50-gpu1] 
+[K50-gpu1] Condition                  F1       EM  TypeAcc        P        R
+[K50-gpu1] ------------------------------------------------------------
+[K50-gpu1] full                    0.951    0.521    1.000    0.908    0.998
+[K50-gpu1] 
+[K50-gpu1] ==========================================================================================
+[K50-gpu1] FEW-SHOT STRUCTURAL EXPERIMENT (Real DINOv3 Features)
+[K50-gpu1]   840 total states, 588 pool for sampling
+[K50-gpu1]   4053 transitions, 20 epochs per condition
+[K50-gpu1]   Few-shot unit: image
+[K50-gpu1]   Transition mask source: state_diff
+[K50-gpu1]   Transition warmup epochs: 0
+[K50-gpu1]   Conditions: ['full']
+[K50-gpu1] ==========================================================================================
+[K50-gpu1] 
+[K50-gpu1]      K     Unit  Samples   States |           full
+[K50-gpu1] --------------------------------------------------
+[K50-gpu1]     50    image       50       47 |          0.951
+[K50-gpu1] 
+[K50-gpu1] Results saved to /home/claudeuser/RL4VLA/PDDL/experiments/oracle_state_diff_legacy_full_k50_e20_alltrans_20260530_230420
