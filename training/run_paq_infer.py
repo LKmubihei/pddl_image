@@ -26,6 +26,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from paq.domain_compiler import PDDLDomainCompiler
+from paq.blocksworld_support import BlocksworldSupportSketch
 from paq.model import PaQModel
 
 BLOCKS = ["Y", "P", "R", "O"]
@@ -41,10 +42,7 @@ IMAGENET_STD = [0.229, 0.224, 0.225]
 
 
 def _build_domain_info():
-    bws_domain = (
-        Path("/home/claudeuser/ViPlan")
-        / "data" / "planning" / "blocksworld" / "domain.pddl"
-    )
+    bws_domain = ROOT / "data" / "planning" / "blocksworld" / "domain.pddl"
     compiler = PDDLDomainCompiler(str(bws_domain))
     return compiler.compile(
         objects={"block": BLOCKS, "column": COLUMNS},
@@ -84,7 +82,11 @@ def _detect_scoring_head_type(state_dict):
     return "film"
 
 
-DINOV3_REPO = Path("/home/claudeuser/facebookresearch/dinov3")
+def _detect_use_support_head(state_dict):
+    return any(k.startswith("support_head.") for k in state_dict)
+
+
+DINOV3_REPO = ROOT / "dinov3"
 
 
 def _extract_dinov3_features(image_path, device):
@@ -136,6 +138,12 @@ def main():
     parser.add_argument("--checkpoint", required=True, help="Path to model_full.pt")
     parser.add_argument("--image", required=True, help="Path to input image")
     parser.add_argument("--threshold", type=float, default=0.5)
+    parser.add_argument(
+        "--decoder",
+        choices=["auto", "threshold", "support"],
+        default="auto",
+        help="State decoder: auto uses support decoder when the checkpoint has a support head.",
+    )
     parser.add_argument("--use-oracle-types", action="store_true", default=True,
                         help="Use oracle object type IDs (default: True)")
     parser.add_argument("--no-oracle-types", dest="use_oracle_types", action="store_false",
@@ -147,7 +155,9 @@ def main():
     # Load checkpoint (flat state dict)
     state_dict = torch.load(args.checkpoint, map_location="cpu", weights_only=False)
     scoring_head_type = _detect_scoring_head_type(state_dict)
+    use_support_head = _detect_use_support_head(state_dict)
     print(f"Detected scoring head: {scoring_head_type}")
+    print(f"Detected support head: {use_support_head}")
 
     # Build domain info and model
     domain_info = _build_domain_info()
@@ -164,6 +174,7 @@ def main():
         use_real_encoder=False,
         predict_slot_types=True,
         scoring_head_type=scoring_head_type,
+        use_support_head=use_support_head,
     ).to(device)
 
     model.load_state_dict(state_dict)
@@ -188,19 +199,41 @@ def main():
             slot_init=slot_init.unsqueeze(0),
         )
         probs = torch.sigmoid(out["canonical_scores"])[0].cpu().tolist()
+        decoder = args.decoder
+        if decoder == "auto":
+            decoder = "support" if use_support_head else "threshold"
+        if decoder == "support":
+            if "support_scores" not in out:
+                raise ValueError("support decoder requested but checkpoint/model has no support head")
+            sketch = BlocksworldSupportSketch.from_domain_info(domain_info)
+            decoded_vecs, decoded_states = sketch.decode_batch(out["support_scores"], device="cpu")
+            decoded_vec = decoded_vecs[0].tolist()
+            decoded_state = decoded_states[0]
+        else:
+            decoded_vec = [1 if p >= args.threshold else 0 for p in probs]
+            decoded_state = None
 
     # Print results
     canonical_preds = domain_info.canonical_atom_strings
     true_preds = []
+    print(f"\nDecoder: {decoder}")
+    if decoded_state is not None:
+        print(f"Support assignment (score={decoded_state.score:.4f}):")
+        for b, s in decoded_state.assignment.items():
+            print(f"  support({b}) = {s}")
+
     print(f"\n{'Atom':<35s} {'Prob':>6s}  {'Label'}")
     print("-" * 55)
-    for name, prob in zip(canonical_preds, probs):
-        label = "TRUE" if prob >= args.threshold else "false"
+    for name, prob, pred in zip(canonical_preds, probs, decoded_vec):
+        label = "TRUE" if pred else "false"
         print(f"{name:<35s} {prob:>6.4f}  {label}")
-        if prob >= args.threshold:
+        if pred:
             true_preds.append(name)
 
-    print(f"\nTRUE predicates (threshold={args.threshold}):")
+    if decoder == "threshold":
+        print(f"\nTRUE predicates (threshold={args.threshold}):")
+    else:
+        print("\nTRUE predicates (support decoder):")
     if true_preds:
         for p in true_preds:
             print(f"  {p}")

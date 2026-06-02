@@ -98,6 +98,45 @@ class PredicateStateLoss(nn.Module):
             return masked_bce
 
 
+class SupportStateLoss(nn.Module):
+    """Cross-entropy loss for support(block) state factors."""
+
+    def __init__(self, reduction: str = "mean", ignore_index: int = -1):
+        super().__init__()
+        self.reduction = reduction
+        self.ignore_index = ignore_index
+
+    def forward(
+        self,
+        support_scores: torch.Tensor,
+        support_targets: torch.Tensor,
+    ) -> torch.Tensor:
+        """
+        Args:
+            support_scores: (B, n_blocks, n_candidates) raw logits.
+            support_targets: (B, n_blocks) candidate indices, or -1 to ignore.
+
+        Returns:
+            scalar cross-entropy loss.
+        """
+        if support_scores.dim() != 3:
+            raise ValueError(
+                "support_scores must be (B, n_blocks, n_candidates), "
+                f"got {tuple(support_scores.shape)}"
+            )
+        if support_targets.dim() != 2:
+            raise ValueError(
+                f"support_targets must be (B, n_blocks), got {tuple(support_targets.shape)}"
+            )
+        bsz, n_blocks, n_candidates = support_scores.shape
+        return F.cross_entropy(
+            support_scores.reshape(bsz * n_blocks, n_candidates),
+            support_targets.reshape(bsz * n_blocks),
+            reduction=self.reduction,
+            ignore_index=self.ignore_index,
+        )
+
+
 class PredicateContrastiveLoss(nn.Module):
     """InfoNCE-style contrastive loss between predicate slots and queries."""
 

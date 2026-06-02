@@ -50,7 +50,18 @@ class PaQModel(nn.Module):
         predicate_schemas: list[dict] | None = None,
         predict_slot_types: bool = True,
         direct_object_tokens: bool = False,
+        object_extractor_type: str = "slot_attention",
+        object_query_relation_layers: int = 0,
+        dense_global_bias: bool = False,
         scoring_head_type: str = "film",
+        use_support_head: bool = False,
+        object_names: list[str] | None = None,
+        object_type_names: list[str] | None = None,
+        support_block_type: str = "block",
+        support_column_type: str = "column",
+        support_head_type: str = "legacy",
+        support_temperature: float = 1.0,
+        support_geometry_type: str = "none",
         **kwargs,
     ):
         super().__init__()
@@ -62,6 +73,16 @@ class PaQModel(nn.Module):
         self.tau_unknown = tau_unknown
         self.predict_slot_types = predict_slot_types
         self.direct_object_tokens = direct_object_tokens
+        if object_extractor_type not in {"slot_attention", "object_queries"}:
+            raise ValueError(f"Unknown object_extractor_type: {object_extractor_type}")
+        self.object_extractor_type = object_extractor_type
+        self.dense_global_bias = dense_global_bias
+        self.use_support_head = use_support_head
+        self.object_names = object_names or []
+        self.object_type_names = object_type_names or []
+        if support_geometry_type not in {"none", "attention"}:
+            raise ValueError(f"Unknown support_geometry_type: {support_geometry_type}")
+        self.support_geometry_type = support_geometry_type
 
         # --- Component 1: Visual Encoder ---
         if use_real_encoder:
@@ -112,7 +133,7 @@ class PaQModel(nn.Module):
             )
 
         # --- Component 3: Dual Slot Attention with Type Classification ---
-        from .slot_attention import DualSlotAttention
+        from .slot_attention import DualSlotAttention, ObjectQueryExtractor
         self.slot_attention = DualSlotAttention(
             d_slot=d_slot,
             n_object_slots=n_object_slots,
@@ -120,6 +141,16 @@ class PaQModel(nn.Module):
             n_types=len(type_names),
             predict_types=predict_slot_types,
         )
+        self.object_query_extractor = None
+        if self.object_extractor_type == "object_queries":
+            self.object_query_extractor = ObjectQueryExtractor(
+                d_slot=d_slot,
+                n_iter=n_slot_iters,
+                n_relation_layers=object_query_relation_layers,
+                local_refine=kwargs.get("object_query_local_refine", False),
+                local_top_k=kwargs.get("object_query_local_top_k", 4),
+                local_radius=kwargs.get("object_query_local_radius", 2),
+            )
 
         # --- Component 4: Scoring Head ---
         from .scoring_head import PredicateScoringHead
@@ -140,11 +171,91 @@ class PaQModel(nn.Module):
             scorer_type=scoring_head_type,
         )
 
+        self.support_head = None
+        if use_support_head:
+            if not self.object_names or not self.object_type_names:
+                raise ValueError(
+                    "use_support_head=True requires object_names and object_type_names"
+                )
+            block_indices = [
+                i for i, t in enumerate(self.object_type_names)
+                if t == support_block_type
+            ]
+            column_indices = [
+                i for i, t in enumerate(self.object_type_names)
+                if t == support_column_type
+            ]
+            if not block_indices or not column_indices:
+                raise ValueError(
+                    "Blocksworld support head requires block and column objects; "
+                    f"got object_type_names={self.object_type_names}"
+                )
+            candidate_indices = [
+                [j for j in block_indices if j != bi] + column_indices
+                for bi in block_indices
+            ]
+            candidate_type_ids = []
+            loc_xy = {
+                "pump_placement": (0.63, 0.68),
+                "regulator_placement": (0.66, 0.36),
+                "battery_placement": (0.78, 0.17),
+                "buffer_placement": (0.87, 0.45),
+            }
+            candidate_prior_xy = []
+            for row in candidate_indices:
+                type_row = []
+                prior_row = []
+                for idx in row:
+                    if idx in block_indices:
+                        type_row.append(0)
+                        prior_row.append([0.0, 0.0])
+                    elif self.object_names[idx] == "table":
+                        type_row.append(1)
+                        prior_row.append([0.0, 0.0])
+                    else:
+                        type_row.append(2)
+                        x, y = loc_xy.get(self.object_names[idx], (0.5, 0.5))
+                        prior_row.append([x, y])
+                candidate_type_ids.append(type_row)
+                candidate_prior_xy.append(prior_row)
+            from .support_head import BlocksworldSupportHead
+            self.support_head = BlocksworldSupportHead(
+                d_slot=d_slot,
+                block_slot_indices=block_indices,
+                candidate_slot_indices=candidate_indices,
+                hidden_dim=kwargs.get("support_hidden_dim"),
+                scorer_type=support_head_type,
+                temperature=support_temperature,
+                geometry_dim=6 if support_geometry_type == "attention" else 0,
+                candidate_type_ids=candidate_type_ids,
+                candidate_prior_xy=candidate_prior_xy,
+                location_prior_weight=kwargs.get("support_location_prior_weight", 0.0),
+                location_prior_sigma=kwargs.get("support_location_prior_sigma", 0.2),
+                patch_evidence_type=kwargs.get("support_patch_evidence_type", "none"),
+                patch_location_scale_init=kwargs.get("support_patch_location_scale_init", 0.5),
+                patch_table_scale_init=kwargs.get("support_patch_table_scale_init", 0.5),
+                patch_contact_scale_init=kwargs.get("support_patch_contact_scale_init", 0.5),
+                patch_location_sigma=kwargs.get("support_patch_location_sigma", 0.18),
+                patch_temperature=kwargs.get("support_patch_temperature", 1.0),
+                patch_contact_top_k=kwargs.get("support_patch_contact_top_k", 16),
+                patch_contact_sigma_x=kwargs.get("support_patch_contact_sigma_x", 0.12),
+                patch_contact_sigma_y=kwargs.get("support_patch_contact_sigma_y", 0.12),
+                patch_contact_gap=kwargs.get("support_patch_contact_gap", 0.06),
+            )
+            self.support_block_slot_indices = block_indices
+            self.support_candidate_slot_indices = candidate_indices
+
         # --- Projection for visual features ---
         self.feat_proj = nn.Linear(d_slot, d_slot)
         with torch.no_grad():
             nn.init.eye_(self.feat_proj.weight)
             nn.init.zeros_(self.feat_proj.bias)
+        self.global_context_bias = None
+        if dense_global_bias:
+            self.global_context_bias = nn.Sequential(
+                nn.LayerNorm(d_slot),
+                nn.Linear(d_slot, d_slot),
+            )
         self.object_slot_init = nn.Parameter(torch.zeros(n_object_slots, d_slot))
 
     @classmethod
@@ -192,9 +303,42 @@ class PaQModel(nn.Module):
             tau_unknown=tau_unknown,
             predicate_param_types=domain_info.predicate_param_types,
             predicate_schemas=predicate_schemas,
+            object_names=[o.name for o in domain_info.objects],
+            object_type_names=[o.type_name for o in domain_info.objects],
             predict_slot_types=predict_slot_types,
             **kwargs,
         )
+
+    def _attention_object_geometry(self, obj_masks: torch.Tensor) -> torch.Tensor:
+        """Compute soft object geometry from query/slot attention masks.
+
+        Returns per-object [center_x, center_y, spread_x, spread_y, entropy, peak]
+        with coordinates normalized to [0, 1]. Non-square token layouts fall back
+        to zeros because their patch coordinates are not known here.
+        """
+        if obj_masks.dim() != 3:
+            raise ValueError(f"obj_masks must be (B, N_obj, T), got {obj_masks.shape}")
+        B, n_obj, n_tokens = obj_masks.shape
+        side = int(n_tokens ** 0.5)
+        if side * side != n_tokens or n_tokens <= 1:
+            return obj_masks.new_zeros(B, n_obj, 6)
+
+        weights = obj_masks.clamp_min(0)
+        weights = weights / (weights.sum(dim=-1, keepdim=True) + 1e-8)
+        axis = torch.linspace(
+            0.0, 1.0, side, device=obj_masks.device, dtype=obj_masks.dtype
+        )
+        yy, xx = torch.meshgrid(axis, axis, indexing="ij")
+        x = xx.reshape(1, 1, n_tokens)
+        y = yy.reshape(1, 1, n_tokens)
+        cx = (weights * x).sum(dim=-1, keepdim=True)
+        cy = (weights * y).sum(dim=-1, keepdim=True)
+        sx = torch.sqrt((weights * (x - cx).square()).sum(dim=-1, keepdim=True) + 1e-8)
+        sy = torch.sqrt((weights * (y - cy).square()).sum(dim=-1, keepdim=True) + 1e-8)
+        entropy = -(weights * torch.log(weights + 1e-8)).sum(dim=-1, keepdim=True)
+        entropy = entropy / torch.log(weights.new_tensor(float(n_tokens)))
+        peak = weights.max(dim=-1, keepdim=True).values
+        return torch.cat([cx, cy, sx, sy, entropy, peak], dim=-1)
 
     def forward(
         self,
@@ -233,6 +377,9 @@ class PaQModel(nn.Module):
         else:
             visual_feats = images
         visual_feats = self.feat_proj(visual_feats)
+        if self.global_context_bias is not None:
+            global_ctx = visual_feats.mean(dim=1)
+            visual_feats = visual_feats + self.global_context_bias(global_ctx).unsqueeze(1)
         assert visual_feats.dim() == 3 and visual_feats.shape[0] == B, \
             f"visual_feats shape error: expected (B={B}, N, D), got {visual_feats.shape}"
 
@@ -259,6 +406,24 @@ class PaQModel(nn.Module):
                 "obj_masks": torch.eye(
                     self.n_object_slots, device=device, dtype=visual_feats.dtype,
                 ).unsqueeze(0).expand(B, -1, -1),
+            }
+            if self.predict_slot_types:
+                type_logits = self.slot_attention.type_classifier(obj_slots)
+                slot_out["type_logits"] = type_logits
+                slot_out["type_probs"] = torch.softmax(type_logits, dim=-1)
+                slot_out["predicted_type_ids"] = type_logits.argmax(dim=-1)
+        elif self.object_extractor_type == "object_queries":
+            if self.object_query_extractor is None:
+                raise RuntimeError("object_query_extractor was not initialized")
+            obj_slots, obj_masks = self.object_query_extractor(
+                visual_feats,
+                slot_init,
+            )
+            pred_slots = self.slot_attention.pred_sa(obj_slots, pred_queries)
+            slot_out = {
+                "object_slots": obj_slots,
+                "predicate_slots": pred_slots,
+                "obj_masks": obj_masks,
             }
             if self.predict_slot_types:
                 type_logits = self.slot_attention.type_classifier(obj_slots)
@@ -320,6 +485,23 @@ class PaQModel(nn.Module):
             "predicate_slots": pred_slots,
             "predicate_queries": pred_queries,
         }
+        if "obj_masks" in slot_out:
+            result["obj_masks"] = slot_out["obj_masks"]
+        if self.support_head is not None:
+            object_geometry = None
+            if self.support_geometry_type == "attention":
+                if "obj_masks" not in slot_out:
+                    raise RuntimeError(
+                        "support_geometry_type='attention' requires obj_masks"
+                    )
+                object_geometry = self._attention_object_geometry(slot_out["obj_masks"])
+                result["object_geometry"] = object_geometry
+            result["support_scores"] = self.support_head(
+                obj_slots,
+                object_geometry=object_geometry,
+                patch_tokens=visual_feats,
+                object_queries=slot_init,
+            )
         if self.predict_slot_types:
             result["type_logits"] = slot_out["type_logits"]
             result["type_probs"] = type_probs

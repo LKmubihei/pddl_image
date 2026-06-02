@@ -1,0 +1,1 @@
+assembly blue_pump to the ventilator, assembly red_regulator to the ventilator, and assembly red_battery to the ventilator

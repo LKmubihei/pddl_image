@@ -1,0 +1,2 @@
+method,k,n_train,n_test,threshold,test_exact_match,test_f1,test_precision,test_recall,test_legal,train_exact_match,train_f1,placement_part_top1,placement_part_top3,placement_part_top10,placement_mean_gold_rank,placement_max_gold_rank,missed_stack_top1,location_region_top1,wrong_support_part_top1,false_stack_top1
+placement,52,52,100,,0.7900000214576721,0.960284528749259,0.9551886792452831,0.965435041716329,1.0,1.0,1.0,0.9129129129129129,0.96996996996997,0.993993993993994,1.2672672672672673,13.0,7.0,17.0,4.0,1.0

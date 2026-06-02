@@ -1,0 +1,1 @@
+assembly blue_regulator to the ventilator

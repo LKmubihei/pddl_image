@@ -1,0 +1,1 @@
+assembly blue_battery to the ventilator and assembly blue_regulator to the ventilator

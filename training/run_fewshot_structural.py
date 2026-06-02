@@ -19,7 +19,9 @@ import numpy as np
 import torch
 from torch.utils.data import Subset
 
-sys.path.insert(0, str(Path("/home/claudeuser/RL4VLA/PDDL")))
+ROOT = Path(__file__).resolve().parent.parent
+PDDL_ROOT = Path(os.environ.get("PDDL_ROOT", str(ROOT)))
+sys.path.insert(0, str(PDDL_ROOT))
 
 from paq.domain_compiler import PDDLDomainCompiler
 from training.train_aepaq import (
@@ -36,14 +38,24 @@ STATIC_PREDS = {"rightof", "leftof"}
 N_VIEWS = 3
 N_AUGS = 3
 
-PDDL_ROOT = Path("/home/claudeuser/RL4VLA/PDDL")
-BWS_DOMAIN = Path("/home/claudeuser/ViPlan") / "data" / "planning" / "blocksworld" / "domain.pddl"
+VIPAN_ROOT = Path(os.environ.get("VIPAN_ROOT", str(ROOT / "ViPlan")))
+DINOV3_REPO = Path(os.environ.get("DINOV3_REPO", str(ROOT / "dinov3")))
+DINOV3_WEIGHTS = os.environ.get(
+    "DINOV3_WEIGHTS",
+    str(ROOT / "dinov3_vith16plus_pretrain_lvd1689m-7c1da9a5.pth"),
+)
+_LOCAL_BWS_DOMAIN = ROOT / "data" / "planning" / "blocksworld" / "domain.pddl"
+BWS_DOMAIN = (
+    _LOCAL_BWS_DOMAIN
+    if _LOCAL_BWS_DOMAIN.exists()
+    else VIPAN_ROOT / "data" / "planning" / "blocksworld" / "domain.pddl"
+)
 
 DINOV3_KWARGS = {
     "use_dinov3": True,
     "dinov3_source": "local",
-    "dinov3_repo_dir": str(Path("/home/claudeuser/facebookresearch/dinov3")),
-    "dinov3_weights_path": str(PDDL_ROOT / "dinov3_vith16plus_pretrain_lvd1689m-7c1da9a5.pth"),
+    "dinov3_repo_dir": str(DINOV3_REPO),
+    "dinov3_weights_path": str(DINOV3_WEIGHTS),
 }
 
 TRANSITION_CACHE_VERSION = 3
@@ -139,12 +151,8 @@ def _load_cached_features() -> tuple[torch.Tensor, Path] | tuple[None, None]:
 
 
 def _transition_supervision_label(mask_source: str) -> str:
-    if mask_source == "state_diff":
-        return "oracle_state_diff"
-    if mask_source in {"pddl", "pddl_conservative"}:
+    if mask_source == "pddl":
         return "static_pddl_weak"
-    if mask_source == "pddl_sim":
-        return "diagnostic_pddl_sim"
     return mask_source
 
 
@@ -293,6 +301,9 @@ def main():
     parser.add_argument("--pos-weight-max", type=float, default=20.0)
     parser.add_argument("--scoring-head-type", choices=["film", "legacy"], default="film")
     parser.add_argument("--transition-warmup-epochs", type=int, default=20)
+    parser.add_argument("--use-support-head", action="store_true")
+    parser.add_argument("--decode-support", action="store_true")
+    parser.add_argument("--w-support", type=float, default=1.0)
     parser.add_argument(
         "--max-transition-samples",
         type=int,
@@ -307,12 +318,9 @@ def main():
     parser.add_argument(
         "--transition-mask-source",
         type=str,
-        default="state_diff",
-        choices=["state_diff", "pddl", "pddl_conservative", "pddl_sim"],
-        help=(
-            "How to build add/del/frame masks: state_diff=C observed diff, "
-            "pddl=static PDDL declaration masks, pddl_sim=dynamic simulator."
-        ),
+        default="pddl",
+        choices=["pddl"],
+        help="Build transition add/del/frame masks from grounded PDDL action effects.",
     )
     parser.add_argument(
         "--conditions",
@@ -323,6 +331,7 @@ def main():
     args = parser.parse_args()
     k_values = _parse_k_values(args.k_values)
     selected_conditions = _parse_conditions(args.conditions) or ["static", "random_pairs", "adjacent", "full"]
+    support_head_enabled = args.use_support_head or args.decode_support
 
     torch.manual_seed(42)
     np.random.seed(42)
@@ -460,6 +469,9 @@ def main():
         metadata["pos_weight_max"] = args.pos_weight_max
         metadata["scoring_head_type"] = args.scoring_head_type
         metadata["max_transition_samples"] = args.max_transition_samples
+        metadata["use_support_head"] = support_head_enabled
+        metadata["decode_support"] = args.decode_support or support_head_enabled
+        metadata["w_support"] = args.w_support
         metadata.update({
             "feature_source": "cached_dinov3",
             "feature_cache_path": str(feature_cache_path),
@@ -483,6 +495,12 @@ def main():
         print(f"  Transitions: {len(trans_adjacent_ds) if trans_adjacent_ds else 0}")
         print(f"  Conditions: {selected_conditions}")
         print(f"  Transition mask source: {args.transition_mask_source}")
+        if support_head_enabled:
+            print(
+                "  Support head: "
+                f"decode_support={args.decode_support or support_head_enabled} "
+                f"w_support={args.w_support}"
+            )
 
         k_results = run_structural_experiment(
             domain_info=domain_info,
@@ -506,6 +524,9 @@ def main():
             transition_warmup_epochs=args.transition_warmup_epochs,
             pos_weight_max=args.pos_weight_max,
             scoring_head_type=args.scoring_head_type,
+            use_support_head=support_head_enabled,
+            decode_support=args.decode_support or support_head_enabled,
+            w_support=args.w_support,
         )
         all_results[k] = {
             "_metadata": metadata,
@@ -568,6 +589,8 @@ def main():
                     "best_val_f1": res["best_val_f1"],
                     "best_threshold": res.get("best_threshold", 0.5),
                     "transition_mask_source": res.get("transition_mask_source", args.transition_mask_source),
+                    "use_support_head": res.get("use_support_head", support_head_enabled),
+                    "decode_support": res.get("decode_support", args.decode_support or support_head_enabled),
                 }
                 for cond, res in k_res.items()
                 if cond != "_metadata"

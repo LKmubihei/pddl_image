@@ -1,0 +1,1 @@
+assembly red_battery to the ventilator

@@ -1,0 +1,31 @@
+(define (domain blocksworld)
+  (:requirements :typing :negative-preconditions)
+  (:types block column)
+  (:predicates
+    (on ?b1 - block ?b2 - block)
+    (inColumn ?b - block ?c - column)
+    (clear ?b - block)
+    (rightOf ?c1 - column ?c2 - column)
+    (leftOf ?c1 - column ?c2 - column)
+  )
+  (:action pickup
+    :parameters (?b - block ?c - column)
+    :precondition (and (clear ?b) (inColumn ?b ?c))
+    :effect (and (not (inColumn ?b ?c)) (not (clear ?b)))
+  )
+  (:action putdown
+    :parameters (?b - block ?c - column)
+    :precondition (and (not (inColumn ?b ?c)))
+    :effect (and (inColumn ?b ?c) (clear ?b))
+  )
+  (:action stack
+    :parameters (?b1 - block ?b2 - block)
+    :precondition (and (clear ?b1) (clear ?b2))
+    :effect (and (on ?b1 ?b2) (not (clear ?b2)))
+  )
+  (:action unstack
+    :parameters (?b1 - block ?b2 - block)
+    :precondition (and (on ?b1 ?b2) (clear ?b1))
+    :effect (and (not (on ?b1 ?b2)) (clear ?b2))
+  )
+)

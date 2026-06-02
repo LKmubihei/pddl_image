@@ -45,20 +45,31 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 
 # ---- Paths ----
-PDDL_ROOT = Path("/home/claudeuser/RL4VLA/PDDL")
-VIPAN_ROOT = Path("/home/claudeuser/ViPlan")
-DINOV3_REPO = Path("/home/claudeuser/facebookresearch/dinov3")
-DINOV3_WEIGHTS = "/home/claudeuser/RL4VLA/PDDL/dinov3_vith16plus_pretrain_lvd1689m-7c1da9a5.pth"
+REPO_ROOT = Path(__file__).resolve().parent.parent
+PDDL_ROOT = Path(os.environ.get("PDDL_ROOT", str(REPO_ROOT)))
+VIPAN_ROOT = Path(os.environ.get("VIPAN_ROOT", str(REPO_ROOT / "ViPlan")))
+DINOV3_REPO = Path(os.environ.get("DINOV3_REPO", str(REPO_ROOT / "dinov3")))
+DINOV3_WEIGHTS = os.environ.get(
+    "DINOV3_WEIGHTS",
+    str(REPO_ROOT / "dinov3_vith16plus_pretrain_lvd1689m-7c1da9a5.pth"),
+)
 RENDER_SCRIPT = PDDL_ROOT / "render_bpy_direct.py"
-BWS_DOMAIN = VIPAN_ROOT / "data" / "planning" / "blocksworld" / "domain.pddl"
+_LOCAL_BWS_DOMAIN = REPO_ROOT / "data" / "planning" / "blocksworld" / "domain.pddl"
+BWS_DOMAIN = (
+    _LOCAL_BWS_DOMAIN
+    if _LOCAL_BWS_DOMAIN.exists()
+    else VIPAN_ROOT / "data" / "planning" / "blocksworld" / "domain.pddl"
+)
 
 sys.path.insert(0, str(PDDL_ROOT))
 sys.path.insert(0, str(DINOV3_REPO))
 
 from paq.domain_compiler import PDDLDomainCompiler
+from paq.blocksworld_support import BlocksworldSupportSketch
 from paq.model import PaQModel
 from paq.losses import (
     PredicateStateLoss,
+    SupportStateLoss,
     PredicateContrastiveLoss,
     ActionEquivarianceLoss,
     CounterfactualDiscriminabilityLoss,
@@ -648,60 +659,14 @@ def _build_transition_masks(
     action_name: str | None = None,
     canonical_set: set[str] | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
-    """Build pre/add/del/frame masks from either state diff or PDDL semantics.
-
-    Semantics:
-        state_diff:
-            C-style supervision from the observed S_t -> S_t+1 difference.
-        pddl:
-            B-style weak supervision from the action's static compiled PDDL
-            add/delete declarations only. It intentionally does not inspect
-            S_t, so conditional effects remain incomplete.
-        pddl_conservative:
-            Same static add/delete masks as pddl, but disables frame masks.
-        pddl_sim:
-            Dynamic simulator supervision retained for diagnostics/backward
-            compatibility. In deterministic Blocksworld this is equivalent to
-            state_diff and therefore is not a valid B-vs-C comparison.
-    """
+    """Build pre/add/del/frame masks from grounded PDDL action semantics."""
+    if mask_source != "pddl":
+        raise ValueError(f"Only PDDL transition masks are supported; got {mask_source}")
     pre_mask = action_masks["precondition_mask"][action_idx].clone()
-
-    if mask_source == "state_diff":
-        if atoms_t is None or atoms_t1 is None or atom_to_idx is None or n_canon is None:
-            raise ValueError("state_diff masks require atoms_t, atoms_t1, atom_to_idx, and n_canon")
-        add_mask, del_mask, frame_mask = _masks_from_atom_sets(
-            atoms_t, atoms_t1, atom_to_idx, n_canon,
-        )
-        return pre_mask, add_mask, del_mask, frame_mask
-
-    if mask_source in ("pddl", "pddl_conservative"):
-        add_mask = action_masks["add_mask"][action_idx].clone()
-        del_mask = action_masks["del_mask"][action_idx].clone()
-        if mask_source == "pddl_conservative":
-            frame_mask = torch.zeros_like(add_mask)
-        else:
-            frame_mask = action_masks["frame_mask"][action_idx].clone()
-        return pre_mask, add_mask, del_mask, frame_mask
-
-    if mask_source == "pddl_sim":
-        # Dynamically simulate the action to capture conditional effects
-        if state_t is not None and action_name is not None and canonical_set is not None:
-            sim_t1 = _simulate_move_atoms(state_t, action_name, canonical_set)
-            if atoms_t is None:
-                atoms_t = _canonical_state_atoms(state_t, canonical_set)
-            if atom_to_idx is None or n_canon is None:
-                raise ValueError("pddl_sim requires atom_to_idx and n_canon")
-            add_mask, del_mask, frame_mask = _masks_from_atom_sets(
-                atoms_t, sim_t1, atom_to_idx, n_canon,
-            )
-        else:
-            # Fallback for non-Blocksworld callers that have no simulator hook.
-            add_mask = action_masks["add_mask"][action_idx].clone()
-            del_mask = action_masks["del_mask"][action_idx].clone()
-            frame_mask = action_masks["frame_mask"][action_idx].clone()
-        return pre_mask, add_mask, del_mask, frame_mask
-
-    raise ValueError(f"Unknown transition mask source: {mask_source}")
+    add_mask = action_masks["add_mask"][action_idx].clone()
+    del_mask = action_masks["del_mask"][action_idx].clone()
+    frame_mask = action_masks["frame_mask"][action_idx].clone()
+    return pre_mask, add_mask, del_mask, frame_mask
 
 
 def _build_negative_action_masks(
@@ -715,38 +680,14 @@ def _build_negative_action_masks(
     atom_to_idx: dict[str, int],
     n_canon: int,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
-    """Build masks for counterfactual negative actions without mixing B/C modes."""
+    """Build PDDL masks for counterfactual negative actions."""
+    if mask_source != "pddl":
+        raise ValueError(f"Only PDDL transition masks are supported; got {mask_source}")
     neg_pre = action_masks["precondition_mask"][neg_action_idx].clone()
-    neg_action_name = domain_info.action_semantics[neg_action_idx].action_name
-
-    if mask_source == "state_diff":
-        neg_atoms_t1 = _simulate_move_atoms(
-            state_t, neg_action_name, canonical_set,
-        )
-        neg_add, neg_del, neg_frame = _masks_from_atom_sets(
-            atoms_t, neg_atoms_t1, atom_to_idx, n_canon,
-        )
-        return neg_pre, neg_add, neg_del, neg_frame
-
-    if mask_source in ("pddl", "pddl_conservative"):
-        neg_add = action_masks["add_mask"][neg_action_idx].clone()
-        neg_del = action_masks["del_mask"][neg_action_idx].clone()
-        neg_frame = action_masks["frame_mask"][neg_action_idx].clone()
-        if mask_source == "pddl_conservative":
-            neg_frame = torch.zeros_like(neg_frame)
-        return neg_pre, neg_add, neg_del, neg_frame
-
-    if mask_source == "pddl_sim":
-        # Dynamically simulate to capture conditional effects
-        neg_atoms_t1 = _simulate_move_atoms(
-            state_t, neg_action_name, canonical_set,
-        )
-        neg_add, neg_del, neg_frame = _masks_from_atom_sets(
-            atoms_t, neg_atoms_t1, atom_to_idx, n_canon,
-        )
-        return neg_pre, neg_add, neg_del, neg_frame
-
-    raise ValueError(f"Unknown transition mask source: {mask_source}")
+    neg_add = action_masks["add_mask"][neg_action_idx].clone()
+    neg_del = action_masks["del_mask"][neg_action_idx].clone()
+    neg_frame = action_masks["frame_mask"][neg_action_idx].clone()
+    return neg_pre, neg_add, neg_del, neg_frame
 
 
 def _parse_move_action(action_name: str) -> tuple[str, str] | None:
@@ -821,10 +762,10 @@ def _simulate_move_atoms(state, action_name: str, canonical_set: set[str]) -> se
 def build_transition_features(
     transitions, states, all_features, n_views, n_augs,
     canonical_preds, domain_info, n_negatives=3,
-    mask_source="state_diff",
+    mask_source="pddl",
 ):
     """Build transition dataset features with action masks."""
-    if mask_source not in {"state_diff", "pddl", "pddl_conservative", "pddl_sim"}:
+    if mask_source != "pddl":
         raise ValueError(f"Unknown transition mask source: {mask_source}")
     state_to_idx = _build_state_index(states)
     feat_per_state = n_views * n_augs
@@ -1031,11 +972,14 @@ def train_condition(
     use_real_encoder: bool = True,
     visual_encoder=None,
     dinov3_kwargs: dict | None = None,
-    transition_mask_source: str = "state_diff",
+    transition_mask_source: str = "pddl",
     direct_object_tokens: bool = False,
     transition_warmup_epochs: int = 0,
     pos_weight_max: float = 20.0,
     scoring_head_type: str = "film",
+    use_support_head: bool = False,
+    decode_support: bool | None = None,
+    w_support: float = 1.0,
     train_seed: int | None = None,
 ) -> dict:
     """Train one experimental condition.
@@ -1051,6 +995,8 @@ def train_condition(
         np.random.seed(train_seed)
         if torch.cuda.is_available():
             torch.cuda.manual_seed_all(train_seed)
+    if decode_support and not use_support_head:
+        use_support_head = True
 
     # Match n_object_slots to actual domain objects
     effective_n_slots = domain_info.n_objects
@@ -1061,6 +1007,7 @@ def train_condition(
         predict_slot_types=True,
         direct_object_tokens=direct_object_tokens,
         scoring_head_type=scoring_head_type,
+        use_support_head=use_support_head,
     )
     if visual_encoder is not None:
         model_kwargs["visual_encoder"] = visual_encoder
@@ -1077,6 +1024,7 @@ def train_condition(
         state_train_ds.state_labels, max_weight=pos_weight_max,
     ).to(device)
     loss_seed = PredicateStateLoss(pos_weight=pos_weight)
+    loss_support = SupportStateLoss()
     loss_contrast = PredicateContrastiveLoss(temperature=contrast_temperature)
     loss_equiv = ActionEquivarianceLoss(
         w_pre=0.5, w_eff=1.0, w_frame=0.5,
@@ -1096,6 +1044,12 @@ def train_condition(
     ) if trans_ds and len(trans_ds) > 0 else None
 
     type_ids_tensor = torch.tensor(domain_info.obj_type_ids, dtype=torch.long, device=device)
+    support_sketch = (
+        BlocksworldSupportSketch.from_domain_info(domain_info)
+        if use_support_head else None
+    )
+    if decode_support is None:
+        decode_support = use_support_head
 
     use_equiv = condition in ("adjacent", "full", "random_pairs")
     use_cf = condition == "full"
@@ -1122,6 +1076,13 @@ def train_condition(
         f"  Seed pos_weight: mean={pos_weight.mean().item():.2f} "
         f"min={pos_weight.min().item():.2f} max={pos_weight.max().item():.2f}"
     )
+    if support_sketch is not None:
+        print(
+            "  Support head: "
+            f"blocks={support_sketch.blocks} columns={support_sketch.columns} "
+            f"candidates/block={support_sketch.n_candidates} "
+            f"decode_support={decode_support} w_support={w_support}"
+        )
     print(f"{'='*60}")
 
     for epoch in range(n_epochs):
@@ -1142,6 +1103,11 @@ def train_condition(
             L_seed = loss_seed(scores, labels)
             L_contrast = loss_contrast(out["predicate_slots"], out["predicate_queries"])
             loss = w_seed * L_seed + w_contrast * L_contrast
+            if support_sketch is not None:
+                support_targets = support_sketch.labels_to_support_targets(labels)
+                L_support = loss_support(out["support_scores"], support_targets)
+                loss = loss + w_support * L_support
+                epoch_losses["support"] += L_support.item()
 
             if "type_logits" in out:
                 L_type = model.compute_type_loss(obj_types, forward_output=out)
@@ -1259,7 +1225,11 @@ def train_condition(
 
         # ---- Evaluation ----
         if (epoch + 1) % eval_every == 0 or epoch == n_epochs - 1:
-            metrics = evaluate(model, state_val_ds, device, domain_info, threshold=None)
+            metrics = evaluate(
+                model, state_val_ds, device, domain_info, threshold=None,
+                decode_support=decode_support,
+                support_sketch=support_sketch,
+            )
 
             history.append({
                 "epoch": epoch + 1,
@@ -1292,7 +1262,11 @@ def train_condition(
         model.load_state_dict(best_state)
         model.to(device)
 
-    test_metrics = evaluate(model, state_test_ds, device, domain_info, threshold=best_threshold)
+    test_metrics = evaluate(
+        model, state_test_ds, device, domain_info, threshold=best_threshold,
+        decode_support=decode_support,
+        support_sketch=support_sketch,
+    )
 
     return {
         "condition": condition,
@@ -1301,6 +1275,8 @@ def train_condition(
         "test": test_metrics,
         "best_val_f1": best_val_f1,
         "best_threshold": best_threshold,
+        "use_support_head": use_support_head,
+        "decode_support": decode_support,
         "history": history,
         "model_state": best_state,
     }
@@ -1311,7 +1287,16 @@ def train_condition(
 # =========================================================================
 
 @torch.no_grad()
-def evaluate(model, dataset, device, domain_info, use_predicted_types=False, threshold=0.5):
+def evaluate(
+    model,
+    dataset,
+    device,
+    domain_info,
+    use_predicted_types=False,
+    threshold=0.5,
+    decode_support: bool = False,
+    support_sketch: BlocksworldSupportSketch | None = None,
+):
     """Evaluate model on a state dataset.
 
     Note: Scoring always uses oracle type_ids for consistent canonical dimensions.
@@ -1323,6 +1308,7 @@ def evaluate(model, dataset, device, domain_info, use_predicted_types=False, thr
     type_ids_tensor = torch.tensor(domain_info.obj_type_ids, dtype=torch.long, device=device)
     all_probs, all_labels = [], []
     all_type_preds, all_type_labels = [], []
+    support_decoded_count = 0
 
     for batch in loader:
         feats = batch["features"].to(device)
@@ -1332,7 +1318,16 @@ def evaluate(model, dataset, device, domain_info, use_predicted_types=False, thr
         # Always use oracle types for scoring (canonical dimensions must match)
         out = model(feats, object_type_ids=obj_types)
 
-        probs = torch.sigmoid(out["canonical_scores"]).cpu()
+        if decode_support:
+            if support_sketch is None:
+                support_sketch = BlocksworldSupportSketch.from_domain_info(domain_info)
+            if "support_scores" not in out:
+                raise ValueError("decode_support=True but model did not return support_scores")
+            decoded, _ = support_sketch.decode_batch(out["support_scores"], device="cpu")
+            probs = decoded.float()
+            support_decoded_count += int(decoded.shape[0])
+        else:
+            probs = torch.sigmoid(out["canonical_scores"]).cpu()
         all_probs.append(probs)
         all_labels.append(labels.long())
 
@@ -1391,6 +1386,8 @@ def evaluate(model, dataset, device, domain_info, use_predicted_types=False, thr
         "pred_pos_rate": all_preds.float().mean().item(),
         "label_pos_rate": all_labels.float().mean().item(),
         "avg_prob": all_probs.mean().item(),
+        "decode_support": bool(decode_support),
+        "support_decoded_count": support_decoded_count,
     }
 
 
@@ -1411,7 +1408,7 @@ def run_structural_experiment(
     dinov3_kwargs=None,
     exp_dir=None,
     conditions=None,
-    transition_mask_source="state_diff",
+    transition_mask_source="pddl",
     direct_object_tokens: bool = False,
     w_seed: float = 1.0,
     w_type: float = 0.3,
@@ -1425,6 +1422,9 @@ def run_structural_experiment(
     transition_warmup_epochs: int = 0,
     pos_weight_max: float = 20.0,
     scoring_head_type: str = "film",
+    use_support_head: bool = False,
+    decode_support: bool | None = None,
+    w_support: float = 1.0,
     train_seed: int | None = None,
 ):
     """Run the 4-condition structural experiment.
@@ -1478,6 +1478,9 @@ def run_structural_experiment(
             transition_warmup_epochs=transition_warmup_epochs,
             pos_weight_max=pos_weight_max,
             scoring_head_type=scoring_head_type,
+            use_support_head=use_support_head,
+            decode_support=decode_support,
+            w_support=w_support,
             use_real_encoder=True if dinov3_kwargs else False,
             dinov3_kwargs=dinov3_kwargs,
             transition_mask_source=transition_mask_source,
@@ -1506,6 +1509,8 @@ def run_structural_experiment(
                 "best_val_f1": res["best_val_f1"],
                 "best_threshold": res.get("best_threshold", 0.5),
                 "transition_mask_source": res.get("transition_mask_source", transition_mask_source),
+                "use_support_head": res.get("use_support_head", use_support_head),
+                "decode_support": res.get("decode_support", decode_support),
             }
         with open(exp_dir / "structural_results.json", "w") as f:
             json.dump(save_results, f, indent=2)
@@ -1565,7 +1570,10 @@ def run_fewshot_structural(
     dinov3_kwargs=None,
     exp_dir=None,
     conditions=None,
-    transition_mask_source="state_diff",
+    transition_mask_source="pddl",
+    use_support_head: bool = False,
+    decode_support: bool | None = None,
+    w_support: float = 1.0,
 ):
     """Run the 4-condition experiment at different few-shot K values.
 
@@ -1621,6 +1629,9 @@ def run_fewshot_structural(
             exp_dir=exp_dir / f"k_{k}" if exp_dir else None,
             conditions=conditions,
             transition_mask_source=transition_mask_source,
+            use_support_head=use_support_head,
+            decode_support=decode_support,
+            w_support=w_support,
         )
         k_summary = {"_metadata": metadata}
         for cond, res in k_results.items():
@@ -1707,16 +1718,30 @@ def main():
     parser.add_argument(
         "--transition-mask-source",
         type=str,
-        default="state_diff",
-        choices=["state_diff", "pddl", "pddl_conservative", "pddl_sim"],
-        help=(
-            "How to build add/del/frame masks: state_diff=C observed diff, "
-            "pddl=static PDDL declaration masks, pddl_sim=dynamic simulator."
-        ),
+        default="pddl",
+        choices=["pddl"],
+        help="Build transition add/del/frame masks from grounded PDDL action effects.",
+    )
+    parser.add_argument(
+        "--use-support-head",
+        action="store_true",
+        help="Train Blocksworld support(block) head in addition to the atom head.",
+    )
+    parser.add_argument(
+        "--decode-support",
+        action="store_true",
+        help="Evaluate final states with the PDDL-constrained support decoder.",
+    )
+    parser.add_argument(
+        "--w-support",
+        type=float,
+        default=1.0,
+        help="Weight for support cross-entropy when --use-support-head is set.",
     )
     args = parser.parse_args()
     fewshot_k_values = _parse_k_values(args.k_values)
     selected_conditions = _parse_conditions(args.conditions)
+    support_head_enabled = args.use_support_head or args.decode_support
 
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
@@ -1732,6 +1757,12 @@ def main():
     if selected_conditions:
         print(f"Conditions: {selected_conditions}")
     print(f"Transition mask source: {args.transition_mask_source}")
+    if support_head_enabled:
+        print(
+            "Support head enabled: "
+            f"decode_support={args.decode_support or support_head_enabled} "
+            f"w_support={args.w_support}"
+        )
 
     # ---- Step 1: Compile PDDL domain ----
     print("\n[1/6] Compiling PDDL domain...")
@@ -1904,6 +1935,9 @@ def main():
         d_slot=args.d_slot,
         device=args.device,
         dinov3_kwargs=dinov3_kwargs,
+        use_support_head=support_head_enabled,
+        decode_support=args.decode_support or support_head_enabled,
+        w_support=args.w_support,
     )
 
     if args.mode == "structural":
@@ -1940,6 +1974,9 @@ def main():
             exp_dir=exp_dir,
             conditions=selected_conditions,
             transition_mask_source=args.transition_mask_source,
+            use_support_head=support_head_enabled,
+            decode_support=args.decode_support or support_head_enabled,
+            w_support=args.w_support,
         )
 
     elif args.mode == "single":
@@ -1969,6 +2006,9 @@ def main():
         },
         "transition_mask_source": args.transition_mask_source,
         "conditions": selected_conditions,
+        "use_support_head": support_head_enabled,
+        "decode_support": args.decode_support or support_head_enabled,
+        "w_support": args.w_support,
     }
     if args.mode == "fewshot":
         report["fewshot"] = {

@@ -1,0 +1,32 @@
+========================================================================
+ARIAC init-state grounding
+  data: data/ariac
+  output: /home/pc/pddl_image/experiments/ariac_40_30_100_hplus640_d256_coords_structcf_baseline_20260602
+  device: cuda
+========================================================================
+  excluded duplicate-part samples=34 remaining=152
+  samples=152 parts=9 locations=5
+  canonical init atoms=132
+  active label pos rate=0.2439
+  duplicate mode=exchangeable variant_samples=0 max_variants=1
+  Loaded ARIAC feature cache: /home/pc/pddl_image/experiments/ariac_40_30_100_hplus640_d256_coords_structcf_baseline_20260602/ariac_dinov3_raw_s640_l1_last_coords_features.pt
+
+[run] method=placement K=40 train=40 test=100
+    [placement epoch 001] loss=3.7494
+    [placement epoch 040] loss=0.2168
+    [placement epoch 080] loss=0.0000
+    [placement epoch 120] loss=0.0000
+    [placement epoch 160] loss=0.0000
+  -> test EM=0.6300 F1=0.9190 legal=1.0000
+     placement top1=0.8258 top3=0.9099 top10=0.9730 missed_stack=13 location_region=39
+
+[run] method=placement K=30 train=30 test=100
+    [placement epoch 001] loss=3.8868
+    [placement epoch 040] loss=0.2574
+    [placement epoch 080] loss=0.0001
+    [placement epoch 120] loss=0.0000
+    [placement epoch 160] loss=0.0000
+  -> test EM=0.6100 F1=0.9201 legal=1.0000
+     placement top1=0.8138 top3=0.8739 top10=0.9910 missed_stack=11 location_region=44
+
+Results saved to /home/pc/pddl_image/experiments/ariac_40_30_100_hplus640_d256_coords_structcf_baseline_20260602

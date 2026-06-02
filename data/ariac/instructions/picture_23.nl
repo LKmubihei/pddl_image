@@ -1,0 +1,1 @@
+assembly green_regulator to the ventilator

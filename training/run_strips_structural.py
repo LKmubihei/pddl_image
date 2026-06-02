@@ -35,16 +35,12 @@ from training.train_aepaq import (
 DOMAIN_PATH = ROOT / "solver" / "domain.pddl"
 PROBLEM_PATH = ROOT / "solver" / "p_real.pddl"
 STATIC_PREDS = {"screw-for-hole", "requires-predecessor"}
-VALID_MASK_SOURCES = {"state_diff", "pddl", "pddl_conservative", "pddl_sim"}
+VALID_MASK_SOURCES = {"pddl"}
 
 
 def _transition_supervision_label(mask_source: str) -> str:
-    if mask_source == "state_diff":
-        return "oracle_state_diff"
-    if mask_source in {"pddl", "pddl_conservative"}:
+    if mask_source == "pddl":
         return "static_pddl_weak"
-    if mask_source == "pddl_sim":
-        return "diagnostic_pddl_sim"
     return mask_source
 
 
@@ -163,16 +159,12 @@ def _masks_for_transition(
     state_t1: torch.Tensor,
     mask_source: str,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    if mask_source != "pddl":
+        raise ValueError(f"Only PDDL transition masks are supported; got {mask_source}")
     pre = action_masks["precondition_mask"][action_idx].clone()
-    if mask_source == "state_diff":
-        add, delete, frame = _diff_masks(state_t, state_t1)
-        return pre, add, delete, frame
-
     add = action_masks["add_mask"][action_idx].clone()
     delete = action_masks["del_mask"][action_idx].clone()
     frame = action_masks["frame_mask"][action_idx].clone()
-    if mask_source == "pddl_conservative":
-        frame = torch.zeros_like(frame)
     return pre, add, delete, frame
 
 
@@ -183,13 +175,9 @@ def _negative_masks(
     state_t: torch.Tensor,
     mask_source: str,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    if mask_source != "pddl":
+        raise ValueError(f"Only PDDL transition masks are supported; got {mask_source}")
     pre = action_masks["precondition_mask"][neg_action_idx].clone()
-    if mask_source == "state_diff":
-        next_vec = sampler.apply_action(state_t.numpy(), neg_action_idx)
-        if next_vec is not None:
-            add, delete, _ = _diff_masks(state_t, torch.from_numpy(next_vec).float())
-            return pre, add, delete
-
     return (
         pre,
         action_masks["add_mask"][neg_action_idx].clone(),

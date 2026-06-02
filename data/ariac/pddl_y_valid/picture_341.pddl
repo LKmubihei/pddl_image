@@ -1,0 +1,23 @@
+(define (problem picture_341)
+    (:domain ariac)
+    
+    (:objects
+table pump_placement regulator_placement battery_placement buffer_placement - location
+        red_battery red_pump - part
+    )
+    
+    (:init
+(robot_at table)
+        (handempty)        
+        (clear red_pump)
+        (clear red_battery)
+        (part_at red_pump table)
+        (part_at red_battery battery_placement)
+    )
+    
+    (:goal
+(and
+            (part_at red_pump pump_placement)
+        )
+    )
+)

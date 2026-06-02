@@ -191,6 +191,116 @@ class PredicateSlotAttention(nn.Module):
         return slots
 
 
+class ObjectQueryExtractor(nn.Module):
+    """Extract known PDDL objects/locations as query-conditioned visual slots."""
+
+    def __init__(
+        self,
+        d_slot: int = 256,
+        n_iter: int = 2,
+        n_relation_layers: int = 0,
+        n_heads: int = 4,
+        local_refine: bool = False,
+        local_top_k: int = 4,
+        local_radius: int = 2,
+    ):
+        super().__init__()
+        if n_relation_layers < 0:
+            raise ValueError("n_relation_layers must be non-negative")
+        if local_top_k <= 0:
+            raise ValueError("local_top_k must be positive")
+        if local_radius < 0:
+            raise ValueError("local_radius must be non-negative")
+        if d_slot % n_heads != 0:
+            n_heads = 1
+        self.d_slot = d_slot
+        self.n_iter = n_iter
+        self.local_refine = local_refine
+        self.local_top_k = int(local_top_k)
+        self.local_radius = int(local_radius)
+        self.query_norm = nn.LayerNorm(d_slot)
+        self.input_norm = nn.LayerNorm(d_slot)
+        self.to_q = nn.Linear(d_slot, d_slot)
+        self.to_k = nn.Linear(d_slot, d_slot)
+        self.to_v = nn.Linear(d_slot, d_slot)
+        self.gru = nn.GRUCell(d_slot, d_slot)
+        self.update_mlp = nn.Sequential(
+            nn.LayerNorm(d_slot),
+            nn.Linear(d_slot, d_slot * 2),
+            nn.GELU(),
+            nn.Linear(d_slot * 2, d_slot),
+        )
+        self.query_scale = nn.Parameter(torch.ones(1, 1, d_slot))
+        self.relation_layers = nn.ModuleList([
+            nn.TransformerEncoderLayer(
+                d_model=d_slot,
+                nhead=n_heads,
+                dim_feedforward=d_slot * 2,
+                dropout=0.0,
+                activation="gelu",
+                batch_first=True,
+                norm_first=True,
+            )
+            for _ in range(n_relation_layers)
+        ])
+
+    def forward(
+        self,
+        visual_features: torch.Tensor,
+        object_queries: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        if object_queries is None:
+            raise ValueError("ObjectQueryExtractor requires object_queries")
+        slots = self.query_norm(object_queries) * self.query_scale
+        inputs = self.input_norm(visual_features)
+        k = self.to_k(inputs)
+        v = self.to_v(inputs)
+        attn = None
+
+        for _ in range(self.n_iter):
+            q = self.to_q(self.query_norm(slots))
+            logits = torch.bmm(q, k.transpose(1, 2)) / (self.d_slot ** 0.5)
+            attn = F.softmax(logits, dim=-1)
+            updates = torch.bmm(attn, v)
+            slots = self.gru(
+                updates.reshape(-1, self.d_slot),
+                slots.reshape(-1, self.d_slot),
+            ).reshape_as(slots)
+            slots = slots + self.update_mlp(slots)
+
+        if self.local_refine:
+            n_tokens = visual_features.shape[1]
+            side = int(n_tokens ** 0.5)
+            if side * side == n_tokens:
+                k_top = min(self.local_top_k, n_tokens)
+                ref = torch.topk(attn, k=k_top, dim=-1).indices
+                ref_y = ref // side
+                ref_x = ref % side
+                local_mask = torch.zeros_like(attn, dtype=torch.bool)
+                for dy in range(-self.local_radius, self.local_radius + 1):
+                    for dx in range(-self.local_radius, self.local_radius + 1):
+                        yy = (ref_y + dy).clamp(0, side - 1)
+                        xx = (ref_x + dx).clamp(0, side - 1)
+                        local_idx = yy * side + xx
+                        local_mask.scatter_(2, local_idx, True)
+                q = self.to_q(self.query_norm(slots))
+                logits = torch.bmm(q, k.transpose(1, 2)) / (self.d_slot ** 0.5)
+                logits = logits.masked_fill(~local_mask, -1e4)
+                attn = F.softmax(logits, dim=-1)
+                updates = torch.bmm(attn, v)
+                slots = self.gru(
+                    updates.reshape(-1, self.d_slot),
+                    slots.reshape(-1, self.d_slot),
+                ).reshape_as(slots)
+                slots = slots + self.update_mlp(slots)
+
+        for layer in self.relation_layers:
+            slots = layer(slots)
+
+        assert attn is not None
+        return slots, attn
+
+
 class DualSlotAttention(nn.Module):
     """Combined object + predicate slot attention with type classification.
 
