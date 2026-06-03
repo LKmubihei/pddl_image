@@ -203,8 +203,11 @@ class ObjectQueryExtractor(nn.Module):
         local_refine: bool = False,
         local_top_k: int = 4,
         local_radius: int = 2,
+        pooling_mode: str = "iterative",
     ):
         super().__init__()
+        if pooling_mode not in {"iterative", "heatmap"}:
+            raise ValueError(f"Unknown object query pooling mode: {pooling_mode}")
         if n_relation_layers < 0:
             raise ValueError("n_relation_layers must be non-negative")
         if local_top_k <= 0:
@@ -218,6 +221,7 @@ class ObjectQueryExtractor(nn.Module):
         self.local_refine = local_refine
         self.local_top_k = int(local_top_k)
         self.local_radius = int(local_radius)
+        self.pooling_mode = pooling_mode
         self.query_norm = nn.LayerNorm(d_slot)
         self.input_norm = nn.LayerNorm(d_slot)
         self.to_q = nn.Linear(d_slot, d_slot)
@@ -256,6 +260,16 @@ class ObjectQueryExtractor(nn.Module):
         k = self.to_k(inputs)
         v = self.to_v(inputs)
         attn = None
+
+        if self.pooling_mode == "heatmap":
+            q = self.to_q(self.query_norm(slots))
+            logits = torch.bmm(q, k.transpose(1, 2)) / (self.d_slot ** 0.5)
+            attn = F.softmax(logits, dim=-1)
+            slots = torch.bmm(attn, v)
+            slots = slots + self.update_mlp(slots)
+            for layer in self.relation_layers:
+                slots = layer(slots)
+            return slots, attn
 
         for _ in range(self.n_iter):
             q = self.to_q(self.query_norm(slots))

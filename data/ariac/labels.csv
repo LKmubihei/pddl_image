@@ -1,0 +1,6 @@
+label_name,bbox_x,bbox_y,bbox_width,bbox_height,image_name,image_width,image_height
+table,7,0,623,474,picture_206.jpg,1280,480
+pump_placement,912,85,122,108,picture_206.jpg,1280,480
+regulator_placement,1104,41,122,110,picture_206.jpg,1280,480
+buffer_placement,902,207,143,109,picture_206.jpg,1280,480
+battery_placement,881,330,202,86,picture_206.jpg,1280,480

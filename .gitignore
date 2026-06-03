@@ -14,6 +14,9 @@ build/
 *.pth
 *.pt
 
+# Diagnostic object detector boxes; do not use as method input.
+data/ariac/labels/
+
 # IDE
 .vscode/
 .idea/

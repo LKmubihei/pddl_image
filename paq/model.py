@@ -73,14 +73,14 @@ class PaQModel(nn.Module):
         self.tau_unknown = tau_unknown
         self.predict_slot_types = predict_slot_types
         self.direct_object_tokens = direct_object_tokens
-        if object_extractor_type not in {"slot_attention", "object_queries"}:
+        if object_extractor_type not in {"slot_attention", "object_queries", "heatmap_queries"}:
             raise ValueError(f"Unknown object_extractor_type: {object_extractor_type}")
         self.object_extractor_type = object_extractor_type
         self.dense_global_bias = dense_global_bias
         self.use_support_head = use_support_head
         self.object_names = object_names or []
         self.object_type_names = object_type_names or []
-        if support_geometry_type not in {"none", "attention"}:
+        if support_geometry_type not in {"none", "attention", "label_bbox"}:
             raise ValueError(f"Unknown support_geometry_type: {support_geometry_type}")
         self.support_geometry_type = support_geometry_type
 
@@ -142,7 +142,7 @@ class PaQModel(nn.Module):
             predict_types=predict_slot_types,
         )
         self.object_query_extractor = None
-        if self.object_extractor_type == "object_queries":
+        if self.object_extractor_type in {"object_queries", "heatmap_queries"}:
             self.object_query_extractor = ObjectQueryExtractor(
                 d_slot=d_slot,
                 n_iter=n_slot_iters,
@@ -150,6 +150,10 @@ class PaQModel(nn.Module):
                 local_refine=kwargs.get("object_query_local_refine", False),
                 local_top_k=kwargs.get("object_query_local_top_k", 4),
                 local_radius=kwargs.get("object_query_local_radius", 2),
+                pooling_mode=(
+                    "heatmap" if self.object_extractor_type == "heatmap_queries"
+                    else "iterative"
+                ),
             )
 
         # --- Component 4: Scoring Head ---
@@ -226,7 +230,7 @@ class PaQModel(nn.Module):
                 hidden_dim=kwargs.get("support_hidden_dim"),
                 scorer_type=support_head_type,
                 temperature=support_temperature,
-                geometry_dim=6 if support_geometry_type == "attention" else 0,
+                geometry_dim=6 if support_geometry_type in {"attention", "label_bbox"} else 0,
                 candidate_type_ids=candidate_type_ids,
                 candidate_prior_xy=candidate_prior_xy,
                 location_prior_weight=kwargs.get("support_location_prior_weight", 0.0),
@@ -346,6 +350,7 @@ class PaQModel(nn.Module):
         object_type_ids: Optional[torch.Tensor] = None,
         slot_init: Optional[torch.Tensor] = None,
         use_soft_types: bool = False,
+        object_geometry_override: Optional[torch.Tensor] = None,
     ) -> dict:
         """
         Args:
@@ -412,7 +417,7 @@ class PaQModel(nn.Module):
                 slot_out["type_logits"] = type_logits
                 slot_out["type_probs"] = torch.softmax(type_logits, dim=-1)
                 slot_out["predicted_type_ids"] = type_logits.argmax(dim=-1)
-        elif self.object_extractor_type == "object_queries":
+        elif self.object_extractor_type in {"object_queries", "heatmap_queries"}:
             if self.object_query_extractor is None:
                 raise RuntimeError("object_query_extractor was not initialized")
             obj_slots, obj_masks = self.object_query_extractor(
@@ -493,8 +498,17 @@ class PaQModel(nn.Module):
                 if "obj_masks" not in slot_out:
                     raise RuntimeError(
                         "support_geometry_type='attention' requires obj_masks"
-                    )
+                )
                 object_geometry = self._attention_object_geometry(slot_out["obj_masks"])
+                result["object_geometry"] = object_geometry
+            elif self.support_geometry_type == "label_bbox":
+                if object_geometry_override is None:
+                    object_geometry = obj_slots.new_zeros(B, self.n_object_slots, 6)
+                else:
+                    object_geometry = object_geometry_override.to(
+                        device=obj_slots.device,
+                        dtype=obj_slots.dtype,
+                    )
                 result["object_geometry"] = object_geometry
             result["support_scores"] = self.support_head(
                 obj_slots,

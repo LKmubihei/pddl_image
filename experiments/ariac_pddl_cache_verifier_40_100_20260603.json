@@ -1,0 +1,1268 @@
+{
+  "checkpoint": "experiments/ariac_40_30_100_hplus640_d256_coords_structcf_baseline_20260602/k_40/placement/model.pt",
+  "feature_cache": "experiments/ariac_40_30_100_hplus640_d256_coords_structcf_baseline_20260602/ariac_dinov3_raw_s640_l1_last_coords_features.pt",
+  "metadata": {
+    "train": 40,
+    "test": 100,
+    "checkpoint_k": 40,
+    "checkpoint_n_test": 100,
+    "split_seed": 42,
+    "legal_top_k": 10,
+    "cache_mode": "knn_logit",
+    "bucket_mode": "coarse",
+    "prior_smoothing": 1.0,
+    "meta_feature_scale": 2.0,
+    "duplicate_meta": {
+      "duplicate_mode": "exchangeable",
+      "max_duplicate_target_variants": 1,
+      "samples_with_duplicate_variants": 0
+    }
+  },
+  "selection": {
+    "best_config": {
+      "k": 3,
+      "beta": 5.0,
+      "edge_lambda": 0.2,
+      "state_lambda": 0.0
+    },
+    "best_train_loo_metrics": {
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "exact_match": 1.0,
+      "legal": 1.0,
+      "pred_pos_rate": 0.2566889524459839,
+      "label_pos_rate": 0.2566889524459839
+    },
+    "top_configs": [
+      {
+        "config": {
+          "k": 3,
+          "beta": 5.0,
+          "edge_lambda": 0.2,
+          "state_lambda": 0.0
+        },
+        "metrics": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "exact_match": 1.0,
+          "legal": 1.0,
+          "pred_pos_rate": 0.2566889524459839,
+          "label_pos_rate": 0.2566889524459839
+        }
+      },
+      {
+        "config": {
+          "k": 3,
+          "beta": 10.0,
+          "edge_lambda": 0.2,
+          "state_lambda": 0.0
+        },
+        "metrics": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "exact_match": 1.0,
+          "legal": 1.0,
+          "pred_pos_rate": 0.2566889524459839,
+          "label_pos_rate": 0.2566889524459839
+        }
+      },
+      {
+        "config": {
+          "k": 3,
+          "beta": 20.0,
+          "edge_lambda": 0.2,
+          "state_lambda": 0.0
+        },
+        "metrics": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "exact_match": 1.0,
+          "legal": 1.0,
+          "pred_pos_rate": 0.2566889524459839,
+          "label_pos_rate": 0.2566889524459839
+        }
+      },
+      {
+        "config": {
+          "k": 5,
+          "beta": 5.0,
+          "edge_lambda": 0.2,
+          "state_lambda": 0.0
+        },
+        "metrics": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "exact_match": 1.0,
+          "legal": 1.0,
+          "pred_pos_rate": 0.2566889524459839,
+          "label_pos_rate": 0.2566889524459839
+        }
+      },
+      {
+        "config": {
+          "k": 5,
+          "beta": 10.0,
+          "edge_lambda": 0.2,
+          "state_lambda": 0.0
+        },
+        "metrics": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "exact_match": 1.0,
+          "legal": 1.0,
+          "pred_pos_rate": 0.2566889524459839,
+          "label_pos_rate": 0.2566889524459839
+        }
+      },
+      {
+        "config": {
+          "k": 5,
+          "beta": 20.0,
+          "edge_lambda": 0.2,
+          "state_lambda": 0.0
+        },
+        "metrics": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "exact_match": 1.0,
+          "legal": 1.0,
+          "pred_pos_rate": 0.2566889524459839,
+          "label_pos_rate": 0.2566889524459839
+        }
+      },
+      {
+        "config": {
+          "k": 10,
+          "beta": 5.0,
+          "edge_lambda": 0.2,
+          "state_lambda": 0.0
+        },
+        "metrics": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "exact_match": 1.0,
+          "legal": 1.0,
+          "pred_pos_rate": 0.2566889524459839,
+          "label_pos_rate": 0.2566889524459839
+        }
+      },
+      {
+        "config": {
+          "k": 10,
+          "beta": 10.0,
+          "edge_lambda": 0.2,
+          "state_lambda": 0.0
+        },
+        "metrics": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "exact_match": 1.0,
+          "legal": 1.0,
+          "pred_pos_rate": 0.2566889524459839,
+          "label_pos_rate": 0.2566889524459839
+        }
+      },
+      {
+        "config": {
+          "k": 10,
+          "beta": 20.0,
+          "edge_lambda": 0.2,
+          "state_lambda": 0.0
+        },
+        "metrics": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "exact_match": 1.0,
+          "legal": 1.0,
+          "pred_pos_rate": 0.2566889524459839,
+          "label_pos_rate": 0.2566889524459839
+        }
+      },
+      {
+        "config": {
+          "k": 20,
+          "beta": 5.0,
+          "edge_lambda": 0.2,
+          "state_lambda": 0.0
+        },
+        "metrics": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "exact_match": 1.0,
+          "legal": 1.0,
+          "pred_pos_rate": 0.2566889524459839,
+          "label_pos_rate": 0.2566889524459839
+        }
+      },
+      {
+        "config": {
+          "k": 20,
+          "beta": 10.0,
+          "edge_lambda": 0.2,
+          "state_lambda": 0.0
+        },
+        "metrics": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "exact_match": 1.0,
+          "legal": 1.0,
+          "pred_pos_rate": 0.2566889524459839,
+          "label_pos_rate": 0.2566889524459839
+        }
+      },
+      {
+        "config": {
+          "k": 20,
+          "beta": 20.0,
+          "edge_lambda": 0.2,
+          "state_lambda": 0.0
+        },
+        "metrics": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "exact_match": 1.0,
+          "legal": 1.0,
+          "pred_pos_rate": 0.2566889524459839,
+          "label_pos_rate": 0.2566889524459839
+        }
+      },
+      {
+        "config": {
+          "k": 3,
+          "beta": 5.0,
+          "edge_lambda": 0.2,
+          "state_lambda": 0.2
+        },
+        "metrics": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "exact_match": 1.0,
+          "legal": 1.0,
+          "pred_pos_rate": 0.2566889524459839,
+          "label_pos_rate": 0.2566889524459839
+        }
+      },
+      {
+        "config": {
+          "k": 3,
+          "beta": 10.0,
+          "edge_lambda": 0.2,
+          "state_lambda": 0.2
+        },
+        "metrics": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "exact_match": 1.0,
+          "legal": 1.0,
+          "pred_pos_rate": 0.2566889524459839,
+          "label_pos_rate": 0.2566889524459839
+        }
+      },
+      {
+        "config": {
+          "k": 3,
+          "beta": 20.0,
+          "edge_lambda": 0.2,
+          "state_lambda": 0.2
+        },
+        "metrics": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "exact_match": 1.0,
+          "legal": 1.0,
+          "pred_pos_rate": 0.2566889524459839,
+          "label_pos_rate": 0.2566889524459839
+        }
+      },
+      {
+        "config": {
+          "k": 5,
+          "beta": 5.0,
+          "edge_lambda": 0.2,
+          "state_lambda": 0.2
+        },
+        "metrics": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "exact_match": 1.0,
+          "legal": 1.0,
+          "pred_pos_rate": 0.2566889524459839,
+          "label_pos_rate": 0.2566889524459839
+        }
+      },
+      {
+        "config": {
+          "k": 5,
+          "beta": 10.0,
+          "edge_lambda": 0.2,
+          "state_lambda": 0.2
+        },
+        "metrics": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "exact_match": 1.0,
+          "legal": 1.0,
+          "pred_pos_rate": 0.2566889524459839,
+          "label_pos_rate": 0.2566889524459839
+        }
+      },
+      {
+        "config": {
+          "k": 5,
+          "beta": 20.0,
+          "edge_lambda": 0.2,
+          "state_lambda": 0.2
+        },
+        "metrics": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "exact_match": 1.0,
+          "legal": 1.0,
+          "pred_pos_rate": 0.2566889524459839,
+          "label_pos_rate": 0.2566889524459839
+        }
+      },
+      {
+        "config": {
+          "k": 10,
+          "beta": 5.0,
+          "edge_lambda": 0.2,
+          "state_lambda": 0.2
+        },
+        "metrics": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "exact_match": 1.0,
+          "legal": 1.0,
+          "pred_pos_rate": 0.2566889524459839,
+          "label_pos_rate": 0.2566889524459839
+        }
+      },
+      {
+        "config": {
+          "k": 10,
+          "beta": 10.0,
+          "edge_lambda": 0.2,
+          "state_lambda": 0.2
+        },
+        "metrics": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "exact_match": 1.0,
+          "legal": 1.0,
+          "pred_pos_rate": 0.2566889524459839,
+          "label_pos_rate": 0.2566889524459839
+        }
+      }
+    ]
+  },
+  "metrics": {
+    "train_normal": {
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "exact_match": 1.0,
+      "legal": 1.0,
+      "pred_pos_rate": 0.2566889524459839,
+      "label_pos_rate": 0.2566889524459839
+    },
+    "train_loo_cache": {
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "exact_match": 1.0,
+      "legal": 1.0,
+      "pred_pos_rate": 0.2566889524459839,
+      "label_pos_rate": 0.2566889524459839
+    },
+    "test_normal": {
+      "f1": 0.918982850384388,
+      "precision": 0.9119718309859155,
+      "recall": 0.9261025029797377,
+      "exact_match": 0.6299999952316284,
+      "legal": 1.0,
+      "pred_pos_rate": 0.24496836960315704,
+      "label_pos_rate": 0.24123059213161469
+    },
+    "test_cache": {
+      "f1": 0.9213483146067415,
+      "precision": 0.9143192488262911,
+      "recall": 0.9284862932061978,
+      "exact_match": 0.6299999952316284,
+      "legal": 1.0,
+      "pred_pos_rate": 0.24496836960315704,
+      "label_pos_rate": 0.24123059213161469
+    },
+    "test_placement": {
+      "placement_parts": 333.0,
+      "placement_part_top1": 0.8258258258258259,
+      "placement_part_top3": 0.9099099099099099,
+      "placement_part_top10": 0.972972972972973,
+      "placement_mean_gold_rank": 1.7147147147147148,
+      "placement_max_gold_rank": 13.0,
+      "missed_stack_top1": 13.0,
+      "location_region_top1": 39.0,
+      "wrong_support_part_top1": 1.0,
+      "false_stack_top1": 5.0
+    }
+  },
+  "topk_gold": {
+    "train": {
+      "count": 40,
+      "total": 40,
+      "rate": 1.0
+    },
+    "test": {
+      "count": 82,
+      "total": 100,
+      "rate": 0.82
+    }
+  },
+  "changed": {
+    "changed": [
+      {
+        "sample_id": "picture_336",
+        "gold_topk": false
+      },
+      {
+        "sample_id": "picture_208",
+        "gold_topk": false
+      }
+    ],
+    "good_to_bad": [],
+    "bad_to_good": [],
+    "bad_to_bad": [
+      {
+        "sample_id": "picture_336",
+        "gold_topk": false
+      },
+      {
+        "sample_id": "picture_208",
+        "gold_topk": false
+      }
+    ]
+  },
+  "test_diagnostics": [
+    {
+      "sample_id": "picture_64",
+      "base_score": 39.62800979614258,
+      "edge_score": 22.611064910888672,
+      "state_score": 6.201866626739502,
+      "total_score": 44.15022277832031,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_99",
+      "base_score": 3.6667098999023438,
+      "edge_score": 28.231346130371094,
+      "state_score": 5.73770809173584,
+      "total_score": 9.312978744506836,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_183",
+      "base_score": 9.344036102294922,
+      "edge_score": 20.900489807128906,
+      "state_score": 5.936868190765381,
+      "total_score": 13.524133682250977,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_385",
+      "base_score": 13.40151596069336,
+      "edge_score": 14.706659317016602,
+      "state_score": -8.16992473602295,
+      "total_score": 16.34284782409668,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_343",
+      "base_score": 33.839054107666016,
+      "edge_score": 22.659482955932617,
+      "state_score": 6.194800853729248,
+      "total_score": 38.370948791503906,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_322",
+      "base_score": -7.17929744720459,
+      "edge_score": 13.672829627990723,
+      "state_score": 6.191900730133057,
+      "total_score": -4.444731712341309,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_380",
+      "base_score": 22.788684844970703,
+      "edge_score": 20.42351722717285,
+      "state_score": 6.081586837768555,
+      "total_score": 26.873388290405273,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_7",
+      "base_score": 39.06428527832031,
+      "edge_score": 22.68022918701172,
+      "state_score": 6.198180198669434,
+      "total_score": 43.6003303527832,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_193",
+      "base_score": -2.774351119995117,
+      "edge_score": 13.70500373840332,
+      "state_score": 6.202398300170898,
+      "total_score": -0.033350229263305664,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_61",
+      "base_score": 42.3370361328125,
+      "edge_score": 22.674678802490234,
+      "state_score": 6.200449466705322,
+      "total_score": 46.871971130371094,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_302",
+      "base_score": -11.298297882080078,
+      "edge_score": 19.739103317260742,
+      "state_score": 6.119756698608398,
+      "total_score": -7.35047721862793,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_18",
+      "base_score": 39.062068939208984,
+      "edge_score": 22.6791934967041,
+      "state_score": 6.203197002410889,
+      "total_score": 43.59790802001953,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_368",
+      "base_score": 60.77598571777344,
+      "edge_score": 36.32931900024414,
+      "state_score": 6.174356937408447,
+      "total_score": 68.0418472290039,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_22",
+      "base_score": 58.23096466064453,
+      "edge_score": 22.649425506591797,
+      "state_score": 6.164772987365723,
+      "total_score": 62.76084899902344,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_376",
+      "base_score": 8.569093704223633,
+      "edge_score": 20.32933807373047,
+      "state_score": 5.669439792633057,
+      "total_score": 12.63496208190918,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_82",
+      "base_score": 37.54467010498047,
+      "edge_score": 22.69502830505371,
+      "state_score": 6.206961154937744,
+      "total_score": 42.083675384521484,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_180",
+      "base_score": 43.643611907958984,
+      "edge_score": 30.125757217407227,
+      "state_score": 6.1502156257629395,
+      "total_score": 49.66876220703125,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_306",
+      "base_score": -25.2999267578125,
+      "edge_score": 20.657691955566406,
+      "state_score": 5.451690196990967,
+      "total_score": -21.16838836669922,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_373",
+      "base_score": 19.92957305908203,
+      "edge_score": 34.65772247314453,
+      "state_score": 6.151703834533691,
+      "total_score": 26.86111831665039,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_4",
+      "base_score": 32.45328903198242,
+      "edge_score": 22.692726135253906,
+      "state_score": 6.2029900550842285,
+      "total_score": 36.9918327331543,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_307",
+      "base_score": -11.535883903503418,
+      "edge_score": 14.216349601745605,
+      "state_score": 5.822120666503906,
+      "total_score": -8.69261360168457,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_321",
+      "base_score": -18.033750534057617,
+      "edge_score": 19.701557159423828,
+      "state_score": 5.928528308868408,
+      "total_score": -14.093439102172852,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_176",
+      "base_score": 34.92024230957031,
+      "edge_score": 22.608211517333984,
+      "state_score": 6.191169738769531,
+      "total_score": 39.4418830871582,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_21",
+      "base_score": 51.90422058105469,
+      "edge_score": 22.67154884338379,
+      "state_score": 6.183047294616699,
+      "total_score": 56.43852996826172,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_54",
+      "base_score": 50.26176452636719,
+      "edge_score": 22.614835739135742,
+      "state_score": 6.186387062072754,
+      "total_score": 54.784732818603516,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_342",
+      "base_score": 19.702186584472656,
+      "edge_score": 15.101372718811035,
+      "state_score": 6.20074462890625,
+      "total_score": 22.722461700439453,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_381",
+      "base_score": 21.5755672454834,
+      "edge_score": 22.070964813232422,
+      "state_score": 5.924821853637695,
+      "total_score": 25.989761352539062,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_363",
+      "base_score": 60.77598571777344,
+      "edge_score": 36.32931900024414,
+      "state_score": 6.174356937408447,
+      "total_score": 68.0418472290039,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_397",
+      "base_score": 8.902132034301758,
+      "edge_score": 20.498756408691406,
+      "state_score": 5.819956302642822,
+      "total_score": 13.001883506774902,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_379",
+      "base_score": 19.884634017944336,
+      "edge_score": 22.619401931762695,
+      "state_score": 6.177639484405518,
+      "total_score": 24.40851402282715,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_214",
+      "base_score": 23.215633392333984,
+      "edge_score": 13.678489685058594,
+      "state_score": 6.178678035736084,
+      "total_score": 25.951332092285156,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_39",
+      "base_score": 51.955848693847656,
+      "edge_score": 30.227153778076172,
+      "state_score": 6.198886871337891,
+      "total_score": 58.001277923583984,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_70",
+      "base_score": 42.238929748535156,
+      "edge_score": 22.69491195678711,
+      "state_score": 6.202871799468994,
+      "total_score": 46.77791213989258,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_383",
+      "base_score": 14.326361656188965,
+      "edge_score": 20.876310348510742,
+      "state_score": 6.164915561676025,
+      "total_score": 18.501623153686523,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_349",
+      "base_score": 32.30008316040039,
+      "edge_score": 28.764495849609375,
+      "state_score": 6.186038017272949,
+      "total_score": 38.052982330322266,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_100",
+      "base_score": 8.657624244689941,
+      "edge_score": 35.903106689453125,
+      "state_score": 5.749223709106445,
+      "total_score": 15.838245391845703,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_384",
+      "base_score": 8.366107940673828,
+      "edge_score": 14.58819580078125,
+      "state_score": -8.222192764282227,
+      "total_score": 11.283746719360352,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_26",
+      "base_score": 42.42008590698242,
+      "edge_score": 22.660545349121094,
+      "state_score": 6.19688606262207,
+      "total_score": 46.95219421386719,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_336",
+      "base_score": -21.021940231323242,
+      "edge_score": 19.840377807617188,
+      "state_score": -6.517303466796875,
+      "total_score": -17.053865432739258,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_372",
+      "base_score": 19.92957305908203,
+      "edge_score": 34.65772247314453,
+      "state_score": 6.151703834533691,
+      "total_score": 26.86111831665039,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_81",
+      "base_score": 36.2315559387207,
+      "edge_score": 22.6944522857666,
+      "state_score": 6.206634521484375,
+      "total_score": 40.77044677734375,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_324",
+      "base_score": -5.2291669845581055,
+      "edge_score": 21.222579956054688,
+      "state_score": 6.1952409744262695,
+      "total_score": -0.9846510887145996,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_80",
+      "base_score": 37.52625274658203,
+      "edge_score": 22.695602416992188,
+      "state_score": 6.207109451293945,
+      "total_score": 42.065372467041016,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_201",
+      "base_score": 39.94245147705078,
+      "edge_score": 44.91401672363281,
+      "state_score": 5.859367847442627,
+      "total_score": 48.925254821777344,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_44",
+      "base_score": 51.5431022644043,
+      "edge_score": 22.680625915527344,
+      "state_score": 6.191140174865723,
+      "total_score": 56.079227447509766,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_72",
+      "base_score": 43.31275939941406,
+      "edge_score": 22.692956924438477,
+      "state_score": 6.202812194824219,
+      "total_score": 47.851348876953125,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_27",
+      "base_score": 35.05499267578125,
+      "edge_score": 22.518733978271484,
+      "state_score": 6.157623291015625,
+      "total_score": 39.558738708496094,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_71",
+      "base_score": 40.19266891479492,
+      "edge_score": 22.69146156311035,
+      "state_score": 6.205329418182373,
+      "total_score": 44.730960845947266,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_181",
+      "base_score": -11.298297882080078,
+      "edge_score": 19.739103317260742,
+      "state_score": 6.119756698608398,
+      "total_score": -7.35047721862793,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_340",
+      "base_score": 21.664409637451172,
+      "edge_score": 13.649083137512207,
+      "state_score": 6.183801174163818,
+      "total_score": 24.39422607421875,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_42",
+      "base_score": 32.471710205078125,
+      "edge_score": 22.668039321899414,
+      "state_score": 6.192544460296631,
+      "total_score": 37.00531768798828,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_53",
+      "base_score": 57.921043395996094,
+      "edge_score": 22.657167434692383,
+      "state_score": 6.163578033447266,
+      "total_score": 62.452476501464844,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_356",
+      "base_score": 59.9898681640625,
+      "edge_score": 35.738216400146484,
+      "state_score": 6.089216709136963,
+      "total_score": 67.13751220703125,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_353",
+      "base_score": 25.980031967163086,
+      "edge_score": 28.498188018798828,
+      "state_score": 6.172317981719971,
+      "total_score": 31.679670333862305,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_359",
+      "base_score": 34.16215515136719,
+      "edge_score": 28.14834213256836,
+      "state_score": 6.120110511779785,
+      "total_score": 39.79182434082031,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_20",
+      "base_score": 46.35124969482422,
+      "edge_score": 22.681142807006836,
+      "state_score": 6.198828220367432,
+      "total_score": 50.88747787475586,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_352",
+      "base_score": 13.40151596069336,
+      "edge_score": 14.706659317016602,
+      "state_score": -8.16992473602295,
+      "total_score": 16.34284782409668,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_364",
+      "base_score": 60.77598571777344,
+      "edge_score": 36.32931900024414,
+      "state_score": 6.174356937408447,
+      "total_score": 68.0418472290039,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_338",
+      "base_score": 7.007988929748535,
+      "edge_score": 36.14674758911133,
+      "state_score": 6.008706569671631,
+      "total_score": 14.23733901977539,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_326",
+      "base_score": 25.084596633911133,
+      "edge_score": 15.104902267456055,
+      "state_score": 6.198916435241699,
+      "total_score": 28.10557746887207,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_63",
+      "base_score": 45.91796875,
+      "edge_score": 22.680574417114258,
+      "state_score": 6.198739528656006,
+      "total_score": 50.45408248901367,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_358",
+      "base_score": 47.44890594482422,
+      "edge_score": 30.203901290893555,
+      "state_score": 6.202930927276611,
+      "total_score": 53.48968505859375,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_315",
+      "base_score": -5.931402206420898,
+      "edge_score": 19.80971908569336,
+      "state_score": 6.184788227081299,
+      "total_score": -1.9694583415985107,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_320",
+      "base_score": -5.53543758392334,
+      "edge_score": 22.558895111083984,
+      "state_score": 5.600882053375244,
+      "total_score": -1.023658275604248,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_360",
+      "base_score": 47.36608123779297,
+      "edge_score": 30.064611434936523,
+      "state_score": 6.131669998168945,
+      "total_score": 53.379005432128906,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_314",
+      "base_score": -5.2291669845581055,
+      "edge_score": 21.222579956054688,
+      "state_score": 6.1952409744262695,
+      "total_score": -0.9846510887145996,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_208",
+      "base_score": -21.021940231323242,
+      "edge_score": 19.840377807617188,
+      "state_score": -6.517303466796875,
+      "total_score": -17.053865432739258,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_357",
+      "base_score": 50.826908111572266,
+      "edge_score": 30.19945526123047,
+      "state_score": 6.202457427978516,
+      "total_score": 56.866798400878906,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_382",
+      "base_score": 15.569999694824219,
+      "edge_score": 22.534799575805664,
+      "state_score": 6.14341926574707,
+      "total_score": 20.07695960998535,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_345",
+      "base_score": 33.839054107666016,
+      "edge_score": 22.659482955932617,
+      "state_score": 6.194800853729248,
+      "total_score": 38.370948791503906,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_211",
+      "base_score": 19.92957305908203,
+      "edge_score": 34.65772247314453,
+      "state_score": 6.151703834533691,
+      "total_score": 26.86111831665039,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_371",
+      "base_score": 39.94245147705078,
+      "edge_score": 44.91401672363281,
+      "state_score": 5.859367847442627,
+      "total_score": 48.925254821777344,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_329",
+      "base_score": 8.423446655273438,
+      "edge_score": 7.538724899291992,
+      "state_score": 6.199446678161621,
+      "total_score": 9.931191444396973,
+      "num_candidates": 5.0
+    },
+    {
+      "sample_id": "picture_335",
+      "base_score": 15.68927001953125,
+      "edge_score": 7.553524494171143,
+      "state_score": 6.179255962371826,
+      "total_score": 17.199974060058594,
+      "num_candidates": 5.0
+    },
+    {
+      "sample_id": "picture_350",
+      "base_score": 23.799850463867188,
+      "edge_score": 13.64413070678711,
+      "state_score": 6.184817314147949,
+      "total_score": 26.528676986694336,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_341",
+      "base_score": 15.033023834228516,
+      "edge_score": 13.687851905822754,
+      "state_score": 6.185165882110596,
+      "total_score": 17.770593643188477,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_83",
+      "base_score": 42.60010528564453,
+      "edge_score": 22.690656661987305,
+      "state_score": 6.206307888031006,
+      "total_score": 47.13823699951172,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_375",
+      "base_score": 39.94245147705078,
+      "edge_score": 44.91401672363281,
+      "state_score": 5.859367847442627,
+      "total_score": 48.925254821777344,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_24",
+      "base_score": 34.25724792480469,
+      "edge_score": 22.68640899658203,
+      "state_score": 6.20316743850708,
+      "total_score": 38.79452896118164,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_89",
+      "base_score": 39.111236572265625,
+      "edge_score": 22.681259155273438,
+      "state_score": 6.202871799468994,
+      "total_score": 43.64748764038086,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_73",
+      "base_score": 43.468570709228516,
+      "edge_score": 22.693876266479492,
+      "state_score": 6.20278263092041,
+      "total_score": 48.007347106933594,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_86",
+      "base_score": 57.924827575683594,
+      "edge_score": 22.652088165283203,
+      "state_score": 6.130183219909668,
+      "total_score": 62.45524597167969,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_344",
+      "base_score": -11.708327293395996,
+      "edge_score": 27.9931583404541,
+      "state_score": 5.794678688049316,
+      "total_score": -6.1096954345703125,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_195",
+      "base_score": 21.664409637451172,
+      "edge_score": 13.649083137512207,
+      "state_score": 6.183801174163818,
+      "total_score": 24.39422607421875,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_370",
+      "base_score": 39.94245147705078,
+      "edge_score": 44.91401672363281,
+      "state_score": 5.859367847442627,
+      "total_score": 48.925254821777344,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_28",
+      "base_score": 41.72240447998047,
+      "edge_score": 21.98969268798828,
+      "state_score": 5.663784503936768,
+      "total_score": 46.12034225463867,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_333",
+      "base_score": 7.323997497558594,
+      "edge_score": 7.538276672363281,
+      "state_score": 6.200626373291016,
+      "total_score": 8.831652641296387,
+      "num_candidates": 5.0
+    },
+    {
+      "sample_id": "picture_325",
+      "base_score": -13.254304885864258,
+      "edge_score": 13.66294002532959,
+      "state_score": 6.103392601013184,
+      "total_score": -10.521717071533203,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_377",
+      "base_score": 5.899324417114258,
+      "edge_score": 20.493314743041992,
+      "state_score": 5.68234395980835,
+      "total_score": 9.997987747192383,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_310",
+      "base_score": 15.000896453857422,
+      "edge_score": 28.66480255126953,
+      "state_score": 6.165912628173828,
+      "total_score": 20.733856201171875,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_207",
+      "base_score": -5.225785255432129,
+      "edge_score": 21.22283172607422,
+      "state_score": 6.194976806640625,
+      "total_score": -0.9812188148498535,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_308",
+      "base_score": -5.225785255432129,
+      "edge_score": 21.22283172607422,
+      "state_score": 6.194976806640625,
+      "total_score": -0.9812188148498535,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_76",
+      "base_score": 33.707054138183594,
+      "edge_score": 22.692035675048828,
+      "state_score": 6.2038774490356445,
+      "total_score": 38.245460510253906,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_323",
+      "base_score": -1.2713775634765625,
+      "edge_score": 21.05343246459961,
+      "state_score": 5.856137275695801,
+      "total_score": 2.9393091201782227,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_347",
+      "base_score": 11.247658729553223,
+      "edge_score": 22.61186981201172,
+      "state_score": 6.151310443878174,
+      "total_score": 15.77003288269043,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_390",
+      "base_score": 42.54596710205078,
+      "edge_score": 34.47105026245117,
+      "state_score": 6.12941312789917,
+      "total_score": 49.44017791748047,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_309",
+      "base_score": 3.906752586364746,
+      "edge_score": 19.276243209838867,
+      "state_score": 6.043778896331787,
+      "total_score": 7.762001037597656,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_351",
+      "base_score": 8.366107940673828,
+      "edge_score": 14.58819580078125,
+      "state_score": -8.222192764282227,
+      "total_score": 11.283746719360352,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_339",
+      "base_score": 25.02029800415039,
+      "edge_score": 20.882678985595703,
+      "state_score": 5.8905863761901855,
+      "total_score": 29.196834564208984,
+      "num_candidates": 10.0
+    },
+    {
+      "sample_id": "picture_55",
+      "base_score": 34.81655502319336,
+      "edge_score": 22.68836212158203,
+      "state_score": 6.203670501708984,
+      "total_score": 39.35422897338867,
+      "num_candidates": 10.0
+    }
+  ]
+}

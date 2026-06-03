@@ -873,7 +873,12 @@ def load_or_extract_features(
     return features
 
 
-def object_slot_init(parts: list[str], locations: list[str], d_slot: int) -> torch.Tensor:
+def object_slot_init(
+    parts: list[str],
+    locations: list[str],
+    d_slot: int,
+    loc_xy_override: dict[str, tuple[float, float]] | None = None,
+) -> torch.Tensor:
     colors = ["blue", "green", "red", "yellow"]
     kinds = ["pump", "battery", "regulator", "sensor"]
     loc_xy = {
@@ -883,6 +888,8 @@ def object_slot_init(parts: list[str], locations: list[str], d_slot: int) -> tor
         "battery_placement": (0.78, 0.17),
         "buffer_placement": (0.87, 0.45),
     }
+    if loc_xy_override:
+        loc_xy.update(loc_xy_override)
     vectors = []
     for name in parts + locations:
         v = np.zeros(d_slot, dtype=np.float32)
@@ -908,6 +915,400 @@ def object_slot_init(parts: list[str], locations: list[str], d_slot: int) -> tor
                 v[idx + 1] = 1.0
         vectors.append(v)
     return torch.tensor(np.stack(vectors), dtype=torch.float32)
+
+
+def _ariac_part_kind(name: str) -> str | None:
+    for kind in ("battery", "pump", "regulator"):
+        if f"_{kind}" in name:
+            return kind
+    return None
+
+
+def _ariac_part_color(name: str) -> str | None:
+    for color in ("blue", "green", "red"):
+        if name.startswith(color + "_"):
+            return color
+    return None
+
+
+def _crop_color_score(
+    image_arr: np.ndarray,
+    box: tuple[float, float, float, float],
+    color: str | None,
+) -> float:
+    if color is None:
+        return 0.0
+    h, w = image_arr.shape[:2]
+    cx, cy, bw, bh = box
+    x1 = max(0, int(round((cx - bw / 2.0) * w)))
+    x2 = min(w, int(round((cx + bw / 2.0) * w)))
+    y1 = max(0, int(round((cy - bh / 2.0) * h)))
+    y2 = min(h, int(round((cy + bh / 2.0) * h)))
+    if x2 <= x1 or y2 <= y1:
+        return 0.0
+    crop = image_arr[y1:y2, x1:x2].astype(np.float32) / 255.0
+    flat = crop.reshape(-1, 3)
+    sat = flat.max(axis=1) - flat.min(axis=1)
+    if flat.shape[0] > 20:
+        thresh = max(0.05, float(np.quantile(sat, 0.65)))
+        selected = flat[sat >= thresh]
+        if selected.size:
+            flat = selected
+    mean = flat.mean(axis=0)
+    r, g, b = float(mean[0]), float(mean[1]), float(mean[2])
+    if color == "red":
+        return r - 0.5 * (g + b)
+    if color == "green":
+        return g - 0.5 * (r + b)
+    if color == "blue":
+        return b - 0.5 * (r + g)
+    return 0.0
+
+
+def _assign_label_boxes(
+    sample: AriacSample,
+    label_path: Path,
+    class_names: list[str],
+) -> tuple[dict[str, tuple[float, float, float, float]], dict[str, int]]:
+    boxes_by_kind: dict[str, list[tuple[float, float, float, float]]] = {
+        "battery": [],
+        "pump": [],
+        "regulator": [],
+    }
+    for line in label_path.read_text().splitlines():
+        toks = line.split()
+        if len(toks) != 5:
+            continue
+        cls = int(toks[0])
+        if cls < 0 or cls >= len(class_names):
+            continue
+        kind = class_names[cls].strip()
+        if kind not in boxes_by_kind:
+            continue
+        boxes_by_kind[kind].append(tuple(float(x) for x in toks[1:5]))
+
+    image_arr = np.asarray(Image.open(sample.image_path).convert("RGB"))
+    assigned: dict[str, tuple[float, float, float, float]] = {}
+    stats = {"active_parts": len(sample.active_parts), "assigned_parts": 0}
+    for kind, boxes in boxes_by_kind.items():
+        parts = [p for p in sample.active_parts if _ariac_part_kind(p) == kind]
+        if not parts or not boxes:
+            continue
+        if len(boxes) >= len(parts) and len(parts) <= 6:
+            best_score = -float("inf")
+            best_perm: tuple[int, ...] | None = None
+            for perm in permutations(range(len(boxes)), len(parts)):
+                score = 0.0
+                for part, bi in zip(parts, perm):
+                    score += _crop_color_score(
+                        image_arr,
+                        boxes[bi],
+                        _ariac_part_color(part),
+                    )
+                if score > best_score:
+                    best_score = score
+                    best_perm = tuple(perm)
+            if best_perm is not None:
+                for part, bi in zip(parts, best_perm):
+                    assigned[part] = boxes[bi]
+        else:
+            pairs: list[tuple[float, str, int]] = []
+            for part in parts:
+                for bi, box in enumerate(boxes):
+                    pairs.append((
+                        _crop_color_score(image_arr, box, _ariac_part_color(part)),
+                        part,
+                        bi,
+                    ))
+            used_parts: set[str] = set()
+            used_boxes: set[int] = set()
+            for _, part, bi in sorted(pairs, reverse=True):
+                if part in used_parts or bi in used_boxes:
+                    continue
+                assigned[part] = boxes[bi]
+                used_parts.add(part)
+                used_boxes.add(bi)
+    stats["assigned_parts"] = len(assigned)
+    return assigned, stats
+
+
+def build_label_bbox_geometry(
+    samples: list[AriacSample],
+    parts: list[str],
+    locations: list[str],
+    label_dir: Path,
+) -> tuple[torch.Tensor, torch.Tensor, dict[str, float]]:
+    class_path = label_dir / "classes.txt"
+    if not class_path.exists():
+        raise FileNotFoundError(f"Missing ARIAC label class file: {class_path}")
+    class_names = [line.strip() for line in class_path.read_text().splitlines() if line.strip()]
+    loc_xy = {
+        "table": (0.25, 0.55, 0.60, 0.70),
+        "pump_placement": (0.63, 0.68, 0.18, 0.18),
+        "regulator_placement": (0.66, 0.36, 0.18, 0.18),
+        "battery_placement": (0.78, 0.17, 0.18, 0.18),
+        "buffer_placement": (0.87, 0.45, 0.18, 0.18),
+    }
+    n_obj = len(parts) + len(locations)
+    geom = torch.zeros(len(samples), n_obj, 6, dtype=torch.float32)
+    has_label = torch.zeros(len(samples), dtype=torch.bool)
+    part_index = {p: i for i, p in enumerate(parts)}
+    total_active = 0
+    total_assigned = 0
+    files_present = 0
+
+    for si, sample in enumerate(samples):
+        label_path = label_dir / f"{sample.sample_id}.txt"
+        if not label_path.exists():
+            continue
+        files_present += 1
+        has_label[si] = True
+        assigned, stats = _assign_label_boxes(sample, label_path, class_names)
+        total_active += stats["active_parts"]
+        total_assigned += stats["assigned_parts"]
+        for part, box in assigned.items():
+            if part not in part_index:
+                continue
+            cx, cy, bw, bh = box
+            geom[si, part_index[part]] = torch.tensor(
+                [cx, cy, bw, bh, bw * bh, 1.0],
+                dtype=torch.float32,
+            )
+        for li, loc in enumerate(locations):
+            x, y, bw, bh = loc_xy.get(loc, (0.5, 0.5, 0.25, 0.25))
+            geom[si, len(parts) + li] = torch.tensor(
+                [x, y, bw, bh, bw * bh, 1.0],
+                dtype=torch.float32,
+            )
+
+    meta = {
+        "label_files_present": float(files_present),
+        "label_part_assignment_rate": (
+            float(total_assigned) / float(total_active)
+            if total_active > 0 else 0.0
+        ),
+    }
+    return geom, has_label, meta
+
+
+def _patch_grid_coords(n_tokens: int, dtype: torch.dtype) -> torch.Tensor:
+    side = int(round(n_tokens ** 0.5))
+    if side * side != n_tokens:
+        raise ValueError(
+            f"Region token pooling requires square dense tokens, got {n_tokens}"
+        )
+    axis = torch.linspace(0.0, 1.0, side, dtype=dtype)
+    yy, xx = torch.meshgrid(axis, axis, indexing="ij")
+    return torch.stack([xx.reshape(-1), yy.reshape(-1)], dim=-1)
+
+
+def load_workspace_boxes(
+    csv_path: Path,
+    locations: list[str],
+) -> dict[str, tuple[float, float, float, float]]:
+    """Load one-time workspace calibration boxes as normalized xyxy boxes."""
+    if not csv_path.exists():
+        raise FileNotFoundError(f"Workspace label CSV not found: {csv_path}")
+    loc_set = set(locations)
+    boxes: dict[str, tuple[float, float, float, float]] = {}
+    with csv_path.open(newline="") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            name = row.get("label_name", "").strip()
+            if name not in loc_set:
+                continue
+            try:
+                x = float(row["bbox_x"])
+                y = float(row["bbox_y"])
+                w = float(row["bbox_width"])
+                h = float(row["bbox_height"])
+                image_w = float(row["image_width"])
+                image_h = float(row["image_height"])
+            except (KeyError, TypeError, ValueError) as exc:
+                raise ValueError(f"Bad workspace row in {csv_path}: {row}") from exc
+            if image_w <= 0 or image_h <= 0 or w <= 0 or h <= 0:
+                continue
+            x1 = max(0.0, min(1.0, x / image_w))
+            y1 = max(0.0, min(1.0, y / image_h))
+            x2 = max(0.0, min(1.0, (x + w) / image_w))
+            y2 = max(0.0, min(1.0, (y + h) / image_h))
+            boxes[name] = (x1, y1, x2, y2)
+    missing = [loc for loc in locations if loc not in boxes]
+    if missing:
+        raise ValueError(
+            f"Workspace label CSV {csv_path} missing locations: {missing}"
+        )
+    return boxes
+
+
+def _object_mask_part_centers(
+    obj_masks: torch.Tensor,
+    sketch: AriacPlacementSketch,
+) -> torch.Tensor:
+    """Compute normalized part centers from object-query attention masks."""
+    if obj_masks.dim() != 3:
+        raise ValueError(f"obj_masks must be (B, N_obj, T), got {tuple(obj_masks.shape)}")
+    bsz, _, n_tokens = obj_masks.shape
+    coords = _patch_grid_coords(n_tokens, obj_masks.dtype).to(obj_masks.device)
+    part_indices = torch.tensor(
+        sketch.part_object_indices,
+        dtype=torch.long,
+        device=obj_masks.device,
+    )
+    part_masks = obj_masks.index_select(1, part_indices).clamp_min(0)
+    denom = part_masks.sum(dim=-1, keepdim=True).clamp_min(1e-8)
+    weights = part_masks / denom
+    centers = torch.einsum("bnt,td->bnd", weights, coords)
+    if centers.shape != (bsz, sketch.n_parts, 2):
+        raise RuntimeError(f"Unexpected part center shape: {tuple(centers.shape)}")
+    return centers
+
+
+def _pool_dense_box(
+    dense_tokens: torch.Tensor,
+    coords: torch.Tensor,
+    box: tuple[float, float, float, float],
+) -> torch.Tensor:
+    cx, cy, bw, bh = box
+    x1 = cx - bw / 2.0
+    x2 = cx + bw / 2.0
+    y1 = cy - bh / 2.0
+    y2 = cy + bh / 2.0
+    inside = (
+        (coords[:, 0] >= x1)
+        & (coords[:, 0] <= x2)
+        & (coords[:, 1] >= y1)
+        & (coords[:, 1] <= y2)
+    )
+    if inside.any():
+        return dense_tokens[inside].mean(dim=0)
+    delta = coords - dense_tokens.new_tensor([cx, cy]).unsqueeze(0)
+    sigma = max(float(bw), float(bh), 0.05)
+    weights = torch.exp(-delta.square().sum(dim=-1) / (2.0 * sigma * sigma))
+    weights = weights / weights.sum().clamp_min(1e-8)
+    return (dense_tokens * weights.unsqueeze(-1)).sum(dim=0)
+
+
+def _read_label_boxes_by_kind(
+    label_path: Path,
+    class_names: list[str],
+) -> dict[str, list[tuple[float, float, float, float]]]:
+    boxes_by_kind: dict[str, list[tuple[float, float, float, float]]] = {
+        "regulator": [],
+        "battery": [],
+        "pump": [],
+    }
+    if not label_path.exists():
+        return boxes_by_kind
+    for line in label_path.read_text().splitlines():
+        toks = line.split()
+        if len(toks) != 5:
+            continue
+        cls = int(toks[0])
+        if cls < 0 or cls >= len(class_names):
+            continue
+        kind = class_names[cls].strip()
+        if kind not in boxes_by_kind:
+            continue
+        boxes_by_kind[kind].append(tuple(float(x) for x in toks[1:5]))
+    for kind in boxes_by_kind:
+        boxes_by_kind[kind].sort(key=lambda b: (b[1], b[0], b[2] * b[3]))
+    return boxes_by_kind
+
+
+def build_label_region_token_features(
+    samples: list[AriacSample],
+    dense_features: torch.Tensor,
+    locations: list[str],
+    label_dir: Path,
+    max_boxes_per_class: int = 5,
+) -> tuple[torch.Tensor, dict[str, float]]:
+    """Convert dense DINO patch tokens into explicit proposal region tokens.
+
+    Region bank layout:
+      [regulator proposal slots, battery proposal slots, pump proposal slots,
+       fixed PDDL location slots]
+
+    Each token is ROI-pooled dense DINO feature plus low-dimensional proposal
+    metadata. Object-region matching is then handled by PDDL object queries.
+    """
+    if dense_features.dim() != 3:
+        raise ValueError(
+            "Region tokens require dense feature tensor (N, T, D), got "
+            f"{tuple(dense_features.shape)}"
+        )
+    if max_boxes_per_class <= 0:
+        raise ValueError("max_boxes_per_class must be positive")
+    class_path = label_dir / "classes.txt"
+    if not class_path.exists():
+        raise FileNotFoundError(f"Missing ARIAC label class file: {class_path}")
+    class_names = [line.strip() for line in class_path.read_text().splitlines() if line.strip()]
+    proposal_kinds = ["regulator", "battery", "pump"]
+    loc_boxes = {
+        "table": (0.25, 0.55, 0.60, 0.75),
+        "pump_placement": (0.63, 0.68, 0.22, 0.22),
+        "regulator_placement": (0.66, 0.36, 0.22, 0.22),
+        "battery_placement": (0.78, 0.17, 0.22, 0.22),
+        "buffer_placement": (0.87, 0.45, 0.22, 0.22),
+    }
+    coords = _patch_grid_coords(
+        dense_features.shape[1],
+        dense_features.dtype,
+    )
+    meta_dim = len(proposal_kinds) + 6
+    n_regions = len(proposal_kinds) * max_boxes_per_class + len(locations)
+    out = dense_features.new_zeros(
+        dense_features.shape[0],
+        n_regions,
+        dense_features.shape[-1] + meta_dim,
+    )
+    files_present = 0
+    proposal_boxes = 0
+    kept_boxes = 0
+
+    for si, sample in enumerate(samples):
+        dense = dense_features[si]
+        label_path = label_dir / f"{sample.sample_id}.txt"
+        boxes_by_kind = _read_label_boxes_by_kind(label_path, class_names)
+        if label_path.exists():
+            files_present += 1
+        ri = 0
+        for kind_idx, kind in enumerate(proposal_kinds):
+            boxes = boxes_by_kind[kind]
+            proposal_boxes += len(boxes)
+            for box in boxes[:max_boxes_per_class]:
+                kept_boxes += 1
+                pooled = _pool_dense_box(dense, coords, box)
+                cx, cy, bw, bh = box
+                meta = dense.new_zeros(meta_dim)
+                meta[kind_idx] = 1.0
+                meta[len(proposal_kinds):] = dense.new_tensor(
+                    [cx, cy, bw, bh, bw * bh, 1.0]
+                )
+                out[si, ri, :dense.shape[-1]] = pooled
+                out[si, ri, dense.shape[-1]:] = meta
+                ri += 1
+            ri += max_boxes_per_class - min(len(boxes), max_boxes_per_class)
+        for loc in locations:
+            box = loc_boxes.get(loc, (0.5, 0.5, 0.25, 0.25))
+            pooled = _pool_dense_box(dense, coords, box)
+            cx, cy, bw, bh = box
+            meta = dense.new_zeros(meta_dim)
+            meta[len(proposal_kinds):] = dense.new_tensor(
+                [cx, cy, bw, bh, bw * bh, 1.0]
+            )
+            out[si, ri, :dense.shape[-1]] = pooled
+            out[si, ri, dense.shape[-1]:] = meta
+            ri += 1
+
+    metadata = {
+        "region_token_count": float(n_regions),
+        "region_label_files_present": float(files_present),
+        "region_proposal_boxes": float(proposal_boxes),
+        "region_kept_boxes": float(kept_boxes),
+        "region_meta_dim": float(meta_dim),
+    }
+    return out, metadata
 
 
 def masked_bce_with_logits(
@@ -1224,6 +1625,69 @@ def counterfactual_margin_loss(
     return torch.stack(losses).mean()
 
 
+def topk_legal_state_nll(
+    support_scores: torch.Tensor,
+    support_target_variants: torch.Tensor,
+    variant_mask: torch.Tensor,
+    active_part_masks: torch.Tensor,
+    sketch: AriacPlacementSketch,
+    top_k: int,
+    temperature: float,
+) -> torch.Tensor:
+    """Listwise NLL over current top-K legal states plus gold variants."""
+    if top_k <= 0:
+        raise ValueError("top_k must be positive")
+    if temperature <= 0:
+        raise ValueError("temperature must be positive")
+    losses: list[torch.Tensor] = []
+    for bi in range(support_scores.shape[0]):
+        legal_targets = _topk_legal_assignment_targets(
+            support_scores[bi],
+            active_part_masks[bi],
+            sketch,
+            top_k,
+        )
+        rows = [legal_targets]
+        for vi in variant_mask[bi].nonzero(as_tuple=True)[0].tolist():
+            gold = support_target_variants[bi, vi]
+            if (gold >= 0).sum().item() == 0:
+                continue
+            rows.append(gold.unsqueeze(0))
+        candidates = torch.cat(rows, dim=0)
+        unique: list[torch.Tensor] = []
+        seen: set[tuple[int, ...]] = set()
+        for row in candidates:
+            key = tuple(int(x) for x in row.detach().cpu().tolist())
+            if key in seen:
+                continue
+            seen.add(key)
+            unique.append(row)
+        candidates = torch.stack(unique, dim=0)
+        scores = _assignment_scores_from_targets(
+            support_scores[bi],
+            candidates,
+        ) / temperature
+
+        gold_scores: list[torch.Tensor] = []
+        for vi in variant_mask[bi].nonzero(as_tuple=True)[0].tolist():
+            gold = support_target_variants[bi, vi]
+            active = gold >= 0
+            if active.sum().item() == 0:
+                continue
+            matches = (candidates[:, active] == gold[active]).all(dim=1)
+            if matches.any():
+                gold_scores.append(scores[matches])
+        if not gold_scores:
+            continue
+        losses.append(
+            torch.logsumexp(scores, dim=0)
+            - torch.logsumexp(torch.cat(gold_scores), dim=0)
+        )
+    if not losses:
+        return support_scores.sum() * 0.0
+    return torch.stack(losses).mean()
+
+
 def dynamic_hard_negative_support_loss(
     support_scores: torch.Tensor,
     support_target_variants: torch.Tensor,
@@ -1342,6 +1806,137 @@ def support_occupancy_loss(
             losses.append(torch.stack(variant_losses).min())
     if not losses:
         return support_scores.sum() * 0.0
+    return torch.stack(losses).mean()
+
+
+def latent_grounding_loss(
+    obj_masks: torch.Tensor,
+    support_target_variants: torch.Tensor,
+    variant_mask: torch.Tensor,
+    active_part_masks: torch.Tensor,
+    sketch: AriacPlacementSketch,
+    loc_weight: float,
+    on_weight: float,
+    entropy_weight: float,
+) -> torch.Tensor:
+    """Weak grounding loss induced by PDDL placement facts.
+
+    Uses query attention heatmaps as latent object/location maps. `part_at`
+    encourages part heatmaps to overlap the target location map. `on` encourages
+    the top part center to be above and horizontally close to the support part.
+    """
+    if obj_masks.dim() != 3:
+        raise ValueError(f"obj_masks must be (B, N, T), got {tuple(obj_masks.shape)}")
+    n_tokens = obj_masks.shape[-1]
+    side = int(round(n_tokens ** 0.5))
+    if side * side != n_tokens:
+        return obj_masks.sum() * 0.0
+    if loc_weight <= 0 and on_weight <= 0 and entropy_weight <= 0:
+        return obj_masks.sum() * 0.0
+
+    masks = obj_masks.clamp_min(1e-8)
+    masks = masks / masks.sum(dim=-1, keepdim=True).clamp_min(1e-8)
+    axis = torch.linspace(
+        0.0,
+        1.0,
+        side,
+        device=obj_masks.device,
+        dtype=obj_masks.dtype,
+    )
+    yy, xx = torch.meshgrid(axis, axis, indexing="ij")
+    coords = torch.stack([xx.reshape(-1), yy.reshape(-1)], dim=-1)
+    centers = torch.einsum("bnt,td->bnd", masks, coords)
+
+    losses: list[torch.Tensor] = []
+    loc_obj_indices = {
+        loc: sketch.n_parts + li
+        for li, loc in enumerate(sketch.locations)
+    }
+    for bi in range(obj_masks.shape[0]):
+        active = [
+            p for p, flag in zip(sketch.parts, active_part_masks[bi].detach().cpu().tolist())
+            if flag > 0
+        ]
+        active_set = set(active)
+        if not active:
+            continue
+        valid_variant_ids = variant_mask[bi].nonzero(as_tuple=True)[0].tolist()
+        if not valid_variant_ids:
+            continue
+        # The current main split has no duplicate variants after filtering.
+        gold = support_target_variants[bi, valid_variant_ids[0]]
+        if loc_weight > 0:
+            part_losses: list[torch.Tensor] = []
+            for part in active:
+                pi = sketch.part_index(part)
+                ci = int(gold[pi].item())
+                if ci < 0:
+                    continue
+                cand = sketch.place_candidates[part][ci]
+                if cand not in loc_obj_indices:
+                    continue
+                logits = []
+                target = None
+                for li, loc in enumerate(sketch.locations):
+                    loc_oi = loc_obj_indices[loc]
+                    overlap = (masks[bi, pi] * masks[bi, loc_oi]).sum().clamp_min(1e-8)
+                    logits.append(torch.log(overlap))
+                    if loc == cand:
+                        target = li
+                if target is not None:
+                    part_losses.append(
+                        F.cross_entropy(
+                            torch.stack(logits).unsqueeze(0),
+                            torch.tensor([target], device=obj_masks.device),
+                        )
+                    )
+            if part_losses:
+                losses.append(loc_weight * torch.stack(part_losses).mean())
+        if on_weight > 0:
+            part_losses = []
+            for part in active:
+                pi = sketch.part_index(part)
+                ci = int(gold[pi].item())
+                if ci < 0:
+                    continue
+                cand = sketch.place_candidates[part][ci]
+                if cand not in active_set:
+                    continue
+                logits = []
+                target = None
+                top_xy = centers[bi, pi]
+                for sj, support in enumerate(active):
+                    if support == part:
+                        continue
+                    si = sketch.part_index(support)
+                    sup_xy = centers[bi, si]
+                    dx = torch.abs(top_xy[0] - sup_xy[0])
+                    dy = sup_xy[1] - top_xy[1]
+                    logit = -dx / 0.12 - (dy - 0.08).square() / (2.0 * 0.12 * 0.12)
+                    logit = logit + torch.where(
+                        dy >= 0,
+                        torch.zeros_like(dy),
+                        torch.full_like(dy, -2.0),
+                    )
+                    logits.append(logit)
+                    if support == cand:
+                        target = len(logits) - 1
+                if target is not None and logits:
+                    part_losses.append(
+                        F.cross_entropy(
+                            torch.stack(logits).unsqueeze(0),
+                            torch.tensor([target], device=obj_masks.device),
+                        )
+                    )
+            if part_losses:
+                losses.append(on_weight * torch.stack(part_losses).mean())
+        if entropy_weight > 0:
+            active_ids = [sketch.part_index(p) for p in active]
+            ent = -(masks[bi, active_ids] * torch.log(masks[bi, active_ids] + 1e-8)).sum(dim=-1)
+            ent = ent / math.log(float(n_tokens))
+            losses.append(entropy_weight * ent.mean())
+    if not losses:
+        return obj_masks.sum() * 0.0
     return torch.stack(losses).mean()
 
 
@@ -1613,6 +2208,134 @@ def legal_rerank_decode_vector(
     return sketch.assignment_to_vector(assignment, active)
 
 
+def _point_in_box(
+    point: torch.Tensor,
+    box: tuple[float, float, float, float],
+) -> bool:
+    x = float(point[0].item())
+    y = float(point[1].item())
+    x1, y1, x2, y2 = box
+    return x >= x1 and x <= x2 and y >= y1 and y <= y2
+
+
+def _box_center_distance(
+    point: torch.Tensor,
+    box: tuple[float, float, float, float],
+) -> float:
+    x = float(point[0].item())
+    y = float(point[1].item())
+    x1, y1, x2, y2 = box
+    cx = 0.5 * (x1 + x2)
+    cy = 0.5 * (y1 + y2)
+    sx = max(x2 - x1, 1e-6)
+    sy = max(y2 - y1, 1e-6)
+    return math.sqrt(((x - cx) / sx) ** 2 + ((y - cy) / sy) ** 2)
+
+
+def _workspace_assignment_score(
+    sketch: AriacPlacementSketch,
+    assignment: dict[str, str],
+    active: list[str],
+    part_centers: torch.Tensor,
+    workspace_boxes: dict[str, tuple[float, float, float, float]],
+    table_residual_penalty: float,
+    outside_penalty: float,
+) -> float:
+    """Score static workspace consistency for chain-root parts only."""
+    active_set = set(active)
+    named_regions = [
+        loc for loc in sketch.locations
+        if loc != sketch.table_location and loc in workspace_boxes
+    ]
+    score = 0.0
+    checked = 0
+    for part in active:
+        support = assignment.get(part)
+        if support not in sketch.locations:
+            continue
+        pi = sketch.part_index(part)
+        point = part_centers[pi]
+        checked += 1
+        if support == sketch.table_location:
+            in_table = (
+                support not in workspace_boxes
+                or _point_in_box(point, workspace_boxes[support])
+            )
+            in_named = any(_point_in_box(point, workspace_boxes[loc]) for loc in named_regions)
+            if in_table and not in_named:
+                score += 1.0
+            else:
+                score -= table_residual_penalty
+        else:
+            box = workspace_boxes.get(support)
+            if box is None:
+                continue
+            if _point_in_box(point, box):
+                score += 1.0
+            else:
+                dist = _box_center_distance(point, box)
+                score -= outside_penalty * min(dist, 2.0)
+            for other in named_regions:
+                if other != support and _point_in_box(point, workspace_boxes[other]):
+                    score -= outside_penalty
+                    break
+    return score / max(checked, 1)
+
+
+def workspace_rerank_decode_vector(
+    sketch: AriacPlacementSketch,
+    placement_scores: torch.Tensor,
+    active_part_mask: torch.Tensor,
+    part_centers: torch.Tensor,
+    workspace_boxes: dict[str, tuple[float, float, float, float]],
+    top_k: int,
+    weight: float,
+    table_residual_penalty: float,
+    outside_penalty: float,
+) -> list[int]:
+    """Decode top-K legal states with static workspace geometry calibration."""
+    device = placement_scores.device
+    legal_targets = _topk_legal_assignment_targets(
+        placement_scores,
+        active_part_mask,
+        sketch,
+        top_k,
+    )
+    base_scores = _assignment_scores_from_targets(placement_scores, legal_targets)
+    active = [
+        p for p, flag in zip(sketch.parts, active_part_mask.detach().cpu().tolist())
+        if flag > 0
+    ]
+    geo_scores: list[float] = []
+    for row in legal_targets.detach().cpu():
+        assignment = {}
+        for part in active:
+            pi = sketch.part_index(part)
+            ci = int(row[pi].item())
+            assignment[part] = sketch.place_candidates[part][ci]
+        geo_scores.append(
+            _workspace_assignment_score(
+                sketch,
+                assignment,
+                active,
+                part_centers.detach().cpu(),
+                workspace_boxes,
+                table_residual_penalty=table_residual_penalty,
+                outside_penalty=outside_penalty,
+            )
+        )
+    geo = torch.tensor(geo_scores, dtype=placement_scores.dtype, device=device)
+    total = base_scores + weight * geo
+    best = int(torch.argmax(total).item())
+    row = legal_targets[best].detach().cpu()
+    assignment: dict[str, str] = {}
+    for part in active:
+        pi = sketch.part_index(part)
+        ci = int(row[pi].item())
+        assignment[part] = sketch.place_candidates[part][ci]
+    return sketch.assignment_to_vector(assignment, active)
+
+
 def placement_ranking_metrics(
     support_scores: torch.Tensor,
     support_target_variants: torch.Tensor,
@@ -1812,6 +2535,7 @@ def train_one(
     sketch: AriacPlacementSketch,
     type_ids: torch.Tensor,
     slot_init: torch.Tensor,
+    support_geometry_features: torch.Tensor | None,
     args,
 ) -> dict:
     device = torch.device(args.device)
@@ -1825,6 +2549,8 @@ def train_one(
         active_atom_masks = active_atom_masks.to(device)
         support_target_variants = support_target_variants.to(device)
         variant_masks = variant_masks.to(device)
+        if support_geometry_features is not None:
+            support_geometry_features = support_geometry_features.to(device)
     visual_encoder = None
     if online_dinov3:
         visual_encoder = DINOv3ViTHPlus(
@@ -1895,7 +2621,7 @@ def train_one(
         if cache_features_on_device
         else features[train_idx]
     )
-    ds = TensorDataset(
+    train_tensors = [
         train_features,
         labels[train_idx],
         label_variants[train_idx],
@@ -1903,7 +2629,10 @@ def train_one(
         active_atom_masks[train_idx],
         support_target_variants[train_idx],
         variant_masks[train_idx],
-    )
+    ]
+    if support_geometry_features is not None:
+        train_tensors.append(support_geometry_features[train_idx])
+    ds = TensorDataset(*train_tensors)
     loader = DataLoader(ds, batch_size=args.batch_size, shuffle=True)
     best_state = None
     best_train_loss = float("inf")
@@ -1914,7 +2643,13 @@ def train_one(
         model.train()
         total = 0.0
         nb = 0
-        for feats, labs, lab_vars, act_parts, act_atoms, sup_tgt_vars, var_mask in loader:
+        for batch_items in loader:
+            if support_geometry_features is None:
+                feats, labs, lab_vars, act_parts, act_atoms, sup_tgt_vars, var_mask = batch_items
+                geom_override = None
+            else:
+                feats, labs, lab_vars, act_parts, act_atoms, sup_tgt_vars, var_mask, geom_override = batch_items
+                geom_override = geom_override.to(device)
             feats = feats.to(device)
             labs = labs.to(device)
             lab_vars = lab_vars.to(device)
@@ -1928,6 +2663,7 @@ def train_one(
                 feats,
                 object_type_ids=type_ids_dev.unsqueeze(0).expand(batch, -1),
                 slot_init=slot_init_dev.unsqueeze(0).expand(batch, -1, -1),
+                object_geometry_override=geom_override,
             )
             if use_placement:
                 if args.placement_loss == "ce":
@@ -1945,7 +2681,7 @@ def train_one(
                         sketch,
                     )
                 elif args.placement_loss == "ce_structured":
-                    loss = duplicate_invariant_support_ce(
+                    loss = args.support_ce_weight * duplicate_invariant_support_ce(
                         out["support_scores"],
                         sup_tgt_vars,
                         var_mask,
@@ -1968,6 +2704,16 @@ def train_one(
                         sketch,
                         margin=args.counterfactual_margin,
                     )
+                if args.topk_legal_nll_weight > 0:
+                    loss = loss + args.topk_legal_nll_weight * topk_legal_state_nll(
+                        out["support_scores"],
+                        sup_tgt_vars,
+                        var_mask,
+                        act_parts,
+                        sketch,
+                        top_k=args.topk_legal_nll_k,
+                        temperature=args.topk_legal_nll_temperature,
+                    )
                 if args.dynamic_hard_negative_weight > 0:
                     loss = loss + args.dynamic_hard_negative_weight * dynamic_hard_negative_support_loss(
                         out["support_scores"],
@@ -1987,6 +2733,17 @@ def train_one(
                         var_mask,
                         act_parts,
                         sketch,
+                    )
+                if args.latent_grounding_weight > 0:
+                    loss = loss + args.latent_grounding_weight * latent_grounding_loss(
+                        out["obj_masks"],
+                        sup_tgt_vars,
+                        var_mask,
+                        act_parts,
+                        sketch,
+                        loc_weight=args.latent_grounding_loc_weight,
+                        on_weight=args.latent_grounding_on_weight,
+                        entropy_weight=args.latent_grounding_entropy_weight,
                     )
                 if args.aux_atom_weight > 0:
                     loss = loss + args.aux_atom_weight * duplicate_invariant_bce_with_logits(
@@ -2025,28 +2782,48 @@ def train_one(
 
     def forward_indices(
         indices: np.ndarray,
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor | None]:
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor | None, torch.Tensor | None]:
         pred_chunks = []
         score_chunks = []
         support_chunks = []
+        center_chunks = []
         eval_features = (
             features[indices].to(device)
             if cache_features_on_device
             else features[indices]
         )
-        eval_ds = TensorDataset(eval_features, active_part_masks[indices])
+        eval_tensors = [eval_features, active_part_masks[indices]]
+        if support_geometry_features is not None:
+            eval_tensors.append(support_geometry_features[indices])
+        eval_ds = TensorDataset(*eval_tensors)
         eval_loader = DataLoader(eval_ds, batch_size=args.batch_size, shuffle=False)
         with torch.no_grad():
-            for feats, act_parts in eval_loader:
+            for batch_items in eval_loader:
+                if support_geometry_features is None:
+                    feats, act_parts = batch_items
+                    geom_override = None
+                else:
+                    feats, act_parts, geom_override = batch_items
+                    geom_override = geom_override.to(device)
                 feats = feats.to(device)
                 batch = feats.shape[0]
                 out = model(
                     feats,
                     object_type_ids=type_ids_dev.unsqueeze(0).expand(batch, -1),
                     slot_init=slot_init_dev.unsqueeze(0).expand(batch, -1, -1),
+                    object_geometry_override=geom_override,
                 )
                 if use_placement:
                     support_cpu = out["support_scores"].cpu()
+                    if args.workspace_rerank_weight > 0:
+                        if "obj_masks" not in out:
+                            raise RuntimeError(
+                                "--workspace-rerank-weight requires an object-query "
+                                "extractor that returns obj_masks"
+                            )
+                        center_chunks.append(
+                            _object_mask_part_centers(out["obj_masks"], sketch).cpu()
+                        )
                     if args.hybrid_atom_decode_weight > 0:
                         vec_rows = []
                         atom_cpu = out["canonical_scores"].cpu()
@@ -2081,13 +2858,15 @@ def train_one(
         if use_placement:
             preds = torch.cat(pred_chunks, dim=0)
             support_scores = torch.cat(support_chunks, dim=0)
+            part_centers = torch.cat(center_chunks, dim=0) if center_chunks else None
         else:
             preds = scores
             support_scores = None
-        return preds, scores, support_scores
+            part_centers = None
+        return preds, scores, support_scores, part_centers
 
-    train_pred_or_logits, train_scores, train_support_scores = forward_indices(train_idx)
-    test_pred_or_logits, test_scores, test_support_scores = forward_indices(test_idx)
+    train_pred_or_logits, train_scores, train_support_scores, train_part_centers = forward_indices(train_idx)
+    test_pred_or_logits, test_scores, test_support_scores, test_part_centers = forward_indices(test_idx)
 
     threshold = None
     legal_reranker_weights = None
@@ -2130,6 +2909,45 @@ def train_one(
             test_preds = decode_with_reranker(
                 test_support_scores,
                 active_part_masks[test_idx].cpu(),
+            )
+        elif args.workspace_rerank_weight > 0:
+            assert train_support_scores is not None and test_support_scores is not None
+            assert train_part_centers is not None and test_part_centers is not None
+            workspace_boxes = getattr(args, "workspace_boxes_norm", None)
+            if not workspace_boxes:
+                raise RuntimeError("--workspace-rerank-weight requires loaded workspace boxes")
+
+            def decode_with_workspace(
+                support: torch.Tensor,
+                active_masks: torch.Tensor,
+                centers: torch.Tensor,
+            ) -> torch.Tensor:
+                rows = []
+                for bi in range(support.shape[0]):
+                    rows.append(
+                        workspace_rerank_decode_vector(
+                            sketch,
+                            support[bi],
+                            active_masks[bi],
+                            centers[bi],
+                            workspace_boxes,
+                            top_k=args.workspace_rerank_top_k,
+                            weight=args.workspace_rerank_weight,
+                            table_residual_penalty=args.workspace_table_residual_penalty,
+                            outside_penalty=args.workspace_outside_penalty,
+                        )
+                    )
+                return torch.tensor(rows, dtype=torch.float32)
+
+            train_preds = decode_with_workspace(
+                train_support_scores,
+                active_part_masks[train_idx].cpu(),
+                train_part_centers,
+            )
+            test_preds = decode_with_workspace(
+                test_support_scores,
+                active_part_masks[test_idx].cpu(),
+                test_part_centers,
             )
         else:
             train_preds = train_pred_or_logits
@@ -2319,9 +3137,13 @@ def main():
             "exact NLL over legal PDDL placement assignments."
         ),
     )
+    parser.add_argument("--support-ce-weight", type=float, default=1.0)
     parser.add_argument("--structured-loss-weight", type=float, default=1.0)
     parser.add_argument("--counterfactual-margin-weight", type=float, default=0.0)
     parser.add_argument("--counterfactual-margin", type=float, default=1.0)
+    parser.add_argument("--topk-legal-nll-weight", type=float, default=0.0)
+    parser.add_argument("--topk-legal-nll-k", type=int, default=10)
+    parser.add_argument("--topk-legal-nll-temperature", type=float, default=1.0)
     parser.add_argument(
         "--dynamic-hard-negative-weight",
         type=float,
@@ -2338,6 +3160,10 @@ def main():
         default=0.0,
         help="Auxiliary occupied/clear consistency weight for part supports.",
     )
+    parser.add_argument("--latent-grounding-weight", type=float, default=0.0)
+    parser.add_argument("--latent-grounding-loc-weight", type=float, default=1.0)
+    parser.add_argument("--latent-grounding-on-weight", type=float, default=1.0)
+    parser.add_argument("--latent-grounding-entropy-weight", type=float, default=0.0)
     parser.add_argument(
         "--hybrid-atom-decode-weight",
         type=float,
@@ -2356,10 +3182,30 @@ def main():
     parser.add_argument("--legal-reranker-lr", type=float, default=0.05)
     parser.add_argument("--legal-reranker-l2", type=float, default=0.05)
     parser.add_argument(
+        "--workspace-label-csv",
+        type=Path,
+        default=ROOT / "data" / "ariac" / "labels.csv",
+        help="One-time static workspace calibration boxes for PDDL locations.",
+    )
+    parser.add_argument(
+        "--workspace-rerank-weight",
+        type=float,
+        default=0.0,
+        help="Inference-time top-K legal-state reranking weight for workspace geometry.",
+    )
+    parser.add_argument(
+        "--workspace-init-location-queries",
+        action="store_true",
+        help="Initialize static PDDL location query coordinates from workspace labels.csv.",
+    )
+    parser.add_argument("--workspace-rerank-top-k", type=int, default=10)
+    parser.add_argument("--workspace-table-residual-penalty", type=float, default=1.0)
+    parser.add_argument("--workspace-outside-penalty", type=float, default=1.0)
+    parser.add_argument(
         "--object-extractor-type",
         type=str,
         default="slot_attention",
-        choices=["slot_attention", "object_queries"],
+        choices=["slot_attention", "object_queries", "heatmap_queries"],
     )
     parser.add_argument("--object-query-relation-layers", type=int, default=0)
     parser.add_argument("--object-query-local-refine", action="store_true")
@@ -2383,7 +3229,7 @@ def main():
         "--support-geometry-type",
         type=str,
         default="none",
-        choices=["none", "attention"],
+        choices=["none", "attention", "label_bbox"],
         help="Optional geometry features for support scoring.",
     )
     parser.add_argument("--support-location-prior-weight", type=float, default=0.0)
@@ -2393,6 +3239,19 @@ def main():
         type=str,
         default="none",
         choices=["none", "location", "location_table", "location_table_contact"],
+    )
+    parser.add_argument(
+        "--region-token-source",
+        type=str,
+        default="none",
+        choices=["none", "label_bbox", "label_bbox_hybrid"],
+        help="Replace dense patch tokens with explicit proposal region tokens.",
+    )
+    parser.add_argument(
+        "--region-token-max-boxes-per-class",
+        type=int,
+        default=5,
+        help="Maximum YOLO proposal boxes kept per part class for region tokens.",
     )
     parser.add_argument("--support-patch-location-scale-init", type=float, default=0.5)
     parser.add_argument("--support-patch-table-scale-init", type=float, default=0.5)
@@ -2475,6 +3334,17 @@ def main():
     )
     parser.add_argument("--keep-invalid", action="store_true")
     parser.add_argument(
+        "--ariac-label-dir",
+        type=Path,
+        default=ROOT / "data" / "ariac" / "labels",
+        help="YOLO bbox labels used when --support-geometry-type label_bbox is enabled.",
+    )
+    parser.add_argument(
+        "--require-labels",
+        action="store_true",
+        help="Keep only samples that have an ARIAC bbox label file.",
+    )
+    parser.add_argument(
         "--exclude-duplicate-parts",
         action="store_true",
         help="Drop samples whose active objects contain exchangeable duplicates such as red_pump/red_pump_1.",
@@ -2514,8 +3384,10 @@ def main():
         raise ValueError("--object-query-local-top-k must be positive")
     if args.object_query_local_radius < 0:
         raise ValueError("--object-query-local-radius must be non-negative")
-    if args.object_query_local_refine and args.object_extractor_type != "object_queries":
-        raise ValueError("--object-query-local-refine requires --object-extractor-type object_queries")
+    if args.object_query_local_refine and args.object_extractor_type not in {"object_queries", "heatmap_queries"}:
+        raise ValueError(
+            "--object-query-local-refine requires object query based extractor"
+        )
     if args.support_temperature <= 0:
         raise ValueError("--support-temperature must be positive")
     if args.support_location_prior_weight < 0:
@@ -2536,10 +3408,18 @@ def main():
         raise ValueError("support patch contact sigmas must be positive")
     if args.structured_loss_weight < 0:
         raise ValueError("--structured-loss-weight must be non-negative")
+    if args.support_ce_weight < 0:
+        raise ValueError("--support-ce-weight must be non-negative")
     if args.counterfactual_margin_weight < 0:
         raise ValueError("--counterfactual-margin-weight must be non-negative")
     if args.counterfactual_margin <= 0:
         raise ValueError("--counterfactual-margin must be positive")
+    if args.topk_legal_nll_weight < 0:
+        raise ValueError("--topk-legal-nll-weight must be non-negative")
+    if args.topk_legal_nll_k <= 0:
+        raise ValueError("--topk-legal-nll-k must be positive")
+    if args.topk_legal_nll_temperature <= 0:
+        raise ValueError("--topk-legal-nll-temperature must be positive")
     if args.dynamic_hard_negative_weight < 0:
         raise ValueError("--dynamic-hard-negative-weight must be non-negative")
     if args.dynamic_hard_negative_margin <= 0:
@@ -2553,10 +3433,32 @@ def main():
             raise ValueError(f"--{name.replace('_', '-')} must be non-negative")
     if args.occupancy_loss_weight < 0:
         raise ValueError("--occupancy-loss-weight must be non-negative")
+    if args.latent_grounding_weight < 0:
+        raise ValueError("--latent-grounding-weight must be non-negative")
+    if args.latent_grounding_loc_weight < 0:
+        raise ValueError("--latent-grounding-loc-weight must be non-negative")
+    if args.latent_grounding_on_weight < 0:
+        raise ValueError("--latent-grounding-on-weight must be non-negative")
+    if args.latent_grounding_entropy_weight < 0:
+        raise ValueError("--latent-grounding-entropy-weight must be non-negative")
     if args.hybrid_atom_decode_weight < 0:
         raise ValueError("--hybrid-atom-decode-weight must be non-negative")
     if args.legal_reranker != "none" and args.hybrid_atom_decode_weight > 0:
         raise ValueError("--legal-reranker cannot be combined with --hybrid-atom-decode-weight")
+    if args.workspace_rerank_weight < 0:
+        raise ValueError("--workspace-rerank-weight must be non-negative")
+    if args.workspace_rerank_top_k <= 0:
+        raise ValueError("--workspace-rerank-top-k must be positive")
+    if args.workspace_table_residual_penalty < 0:
+        raise ValueError("--workspace-table-residual-penalty must be non-negative")
+    if args.workspace_outside_penalty < 0:
+        raise ValueError("--workspace-outside-penalty must be non-negative")
+    if args.workspace_rerank_weight > 0 and args.legal_reranker != "none":
+        raise ValueError("--workspace-rerank-weight cannot be combined with --legal-reranker")
+    if args.workspace_rerank_weight > 0 and args.hybrid_atom_decode_weight > 0:
+        raise ValueError("--workspace-rerank-weight cannot be combined with --hybrid-atom-decode-weight")
+    if args.workspace_rerank_weight > 0 and args.object_extractor_type not in {"object_queries", "heatmap_queries"}:
+        raise ValueError("--workspace-rerank-weight requires object query based extractor")
     if args.legal_reranker_steps <= 0:
         raise ValueError("--legal-reranker-steps must be positive")
     if args.legal_reranker_top_k <= 0:
@@ -2567,6 +3469,12 @@ def main():
         raise ValueError("--legal-reranker-l2 must be non-negative")
     if args.test_size is not None and args.test_size <= 0:
         raise ValueError("--test-size must be positive")
+    if args.support_geometry_type == "label_bbox" and not args.ariac_label_dir.exists():
+        raise FileNotFoundError(f"--ariac-label-dir does not exist: {args.ariac_label_dir}")
+    if args.region_token_source in {"label_bbox", "label_bbox_hybrid"} and not args.ariac_label_dir.exists():
+        raise FileNotFoundError(f"--ariac-label-dir does not exist: {args.ariac_label_dir}")
+    if args.region_token_max_boxes_per_class <= 0:
+        raise ValueError("--region-token-max-boxes-per-class must be positive")
 
     args.split_seed_value = args.seed if args.split_seed is None else args.split_seed
     args.init_seed_value = args.seed if args.init_seed is None else args.init_seed
@@ -2606,6 +3514,24 @@ def main():
         with (exp_dir / "excluded_duplicate_samples.txt").open("w") as f:
             for sample_id in excluded_duplicate_ids:
                 f.write(sample_id + "\n")
+    excluded_unlabeled_ids: list[str] = []
+    if args.require_labels:
+        kept_samples = []
+        for sample in samples:
+            if (args.ariac_label_dir / f"{sample.sample_id}.txt").exists():
+                kept_samples.append(sample)
+            else:
+                excluded_unlabeled_ids.append(sample.sample_id)
+        samples = kept_samples
+        if not samples:
+            raise RuntimeError("No ARIAC samples left after requiring bbox labels")
+        print(
+            f"  excluded unlabeled samples={len(excluded_unlabeled_ids)} "
+            f"remaining={len(samples)}"
+        )
+        with (exp_dir / "excluded_unlabeled_samples.txt").open("w") as f:
+            for sample_id in excluded_unlabeled_ids:
+                f.write(sample_id + "\n")
     all_parts = sorted({p for s in samples for p in s.active_parts})
     all_locations = [
         loc for loc in DEFAULT_LOCATIONS
@@ -2619,6 +3545,19 @@ def main():
     sketch = AriacPlacementSketch.from_domain_info(domain_info)
     print(f"  samples={len(samples)} parts={len(all_parts)} locations={len(all_locations)}")
     print(f"  canonical init atoms={domain_info.n_canonical}")
+    args.workspace_boxes_norm = {}
+    if args.workspace_rerank_weight > 0 or args.workspace_init_location_queries:
+        args.workspace_boxes_norm = load_workspace_boxes(
+            args.workspace_label_csv,
+            all_locations,
+        )
+        print(
+            "  workspace calibration boxes="
+            + ", ".join(
+                f"{name}:{tuple(round(v, 3) for v in box)}"
+                for name, box in args.workspace_boxes_norm.items()
+            )
+        )
 
     labels, active_part_masks, active_atom_masks = [], [], []
     for sample in samples:
@@ -2647,6 +3586,24 @@ def main():
         f"variant_samples={duplicate_meta['samples_with_duplicate_variants']} "
         f"max_variants={duplicate_meta['max_duplicate_target_variants']}"
     )
+    support_geometry_features_t = None
+    label_bbox_meta: dict[str, float] = {}
+    label_bbox_has_labels_t = torch.zeros(len(samples), dtype=torch.bool)
+    if args.support_geometry_type == "label_bbox":
+        support_geometry_features_t, label_bbox_has_labels_t, label_bbox_meta = (
+            build_label_bbox_geometry(
+                samples=samples,
+                parts=all_parts,
+                locations=all_locations,
+                label_dir=args.ariac_label_dir,
+            )
+        )
+        print(
+            "  label bbox coverage="
+            f"{int(label_bbox_has_labels_t.sum().item())}/{len(samples)} "
+            "assigned_part_rate="
+            f"{label_bbox_meta.get('label_part_assignment_rate', 0.0):.4f}"
+        )
 
     scale_tag = "-".join(str(x) for x in args.dinov3_scales_list)
     layer_tag = f"l{args.dinov3_last_n_layers}_{args.dinov3_layer_fusion}"
@@ -2668,6 +3625,37 @@ def main():
         dinov3_add_coords=args.dinov3_add_coords,
         rebuild=args.rebuild_feature_cache,
     )
+    region_token_meta: dict[str, float] = {}
+    if args.region_token_source in {"label_bbox", "label_bbox_hybrid"}:
+        print("  Building label-bbox region tokens from dense features...")
+        region_features, region_token_meta = build_label_region_token_features(
+            samples=samples,
+            dense_features=features,
+            locations=all_locations,
+            label_dir=args.ariac_label_dir,
+            max_boxes_per_class=args.region_token_max_boxes_per_class,
+        )
+        if args.region_token_source == "label_bbox":
+            features = region_features
+        else:
+            if region_features.shape[-1] < features.shape[-1]:
+                raise ValueError(
+                    "Region feature dim must be >= dense feature dim for hybrid mode"
+                )
+            pad_dim = region_features.shape[-1] - features.shape[-1]
+            dense_padded = torch.cat(
+                [
+                    features,
+                    features.new_zeros(features.shape[0], features.shape[1], pad_dim),
+                ],
+                dim=-1,
+            )
+            features = torch.cat([region_features, dense_padded], dim=1)
+            region_token_meta["hybrid_dense_tokens"] = float(dense_padded.shape[1])
+        print(
+            f"  region tokens shape={tuple(features.shape)} "
+            f"label_files={int(region_token_meta['region_label_files_present'])}"
+        )
 
     n = len(samples)
     rng = np.random.default_rng(args.split_seed_value)
@@ -2686,7 +3674,18 @@ def main():
     k_values = parse_k_values(args.k_values)
     methods = [m.strip() for m in args.methods.split(",") if m.strip()]
     type_ids = torch.tensor(domain_info.obj_type_ids, dtype=torch.long)
-    slot_init = object_slot_init(all_parts, all_locations, args.d_slot)
+    workspace_loc_xy = None
+    if args.workspace_init_location_queries:
+        workspace_loc_xy = {
+            loc: (0.5 * (box[0] + box[2]), 0.5 * (box[1] + box[3]))
+            for loc, box in args.workspace_boxes_norm.items()
+        }
+    slot_init = object_slot_init(
+        all_parts,
+        all_locations,
+        args.d_slot,
+        loc_xy_override=workspace_loc_xy,
+    )
 
     rows: list[dict] = []
     artifacts = {"metadata": {}, "runs": []}
@@ -2709,6 +3708,7 @@ def main():
         "support_head_type": args.support_head_type,
         "support_temperature": args.support_temperature,
         "support_geometry_type": args.support_geometry_type,
+        "support_ce_weight": args.support_ce_weight,
         "support_location_prior_weight": args.support_location_prior_weight,
         "support_location_prior_sigma": args.support_location_prior_sigma,
         "support_patch_evidence_type": args.support_patch_evidence_type,
@@ -2721,23 +3721,40 @@ def main():
         "support_patch_contact_sigma_x": args.support_patch_contact_sigma_x,
         "support_patch_contact_sigma_y": args.support_patch_contact_sigma_y,
         "support_patch_contact_gap": args.support_patch_contact_gap,
+        "region_token_source": args.region_token_source,
+        "region_token_max_boxes_per_class": args.region_token_max_boxes_per_class,
+        **region_token_meta,
         "support_hidden_dim": args.support_hidden_dim,
         "placement_loss": args.placement_loss,
         "structured_loss_weight": args.structured_loss_weight,
         "counterfactual_margin_weight": args.counterfactual_margin_weight,
         "counterfactual_margin": args.counterfactual_margin,
+        "topk_legal_nll_weight": args.topk_legal_nll_weight,
+        "topk_legal_nll_k": args.topk_legal_nll_k,
+        "topk_legal_nll_temperature": args.topk_legal_nll_temperature,
         "dynamic_hard_negative_weight": args.dynamic_hard_negative_weight,
         "dynamic_hard_negative_margin": args.dynamic_hard_negative_margin,
         "dynamic_region_table_weight": args.dynamic_region_table_weight,
         "dynamic_stack_table_weight": args.dynamic_stack_table_weight,
         "dynamic_wrong_support_weight": args.dynamic_wrong_support_weight,
         "occupancy_loss_weight": args.occupancy_loss_weight,
+        "latent_grounding_weight": args.latent_grounding_weight,
+        "latent_grounding_loc_weight": args.latent_grounding_loc_weight,
+        "latent_grounding_on_weight": args.latent_grounding_on_weight,
+        "latent_grounding_entropy_weight": args.latent_grounding_entropy_weight,
         "hybrid_atom_decode_weight": args.hybrid_atom_decode_weight,
         "legal_reranker": args.legal_reranker,
         "legal_reranker_steps": args.legal_reranker_steps,
         "legal_reranker_top_k": args.legal_reranker_top_k,
         "legal_reranker_lr": args.legal_reranker_lr,
         "legal_reranker_l2": args.legal_reranker_l2,
+        "workspace_label_csv": str(args.workspace_label_csv),
+        "workspace_rerank_weight": args.workspace_rerank_weight,
+        "workspace_init_location_queries": args.workspace_init_location_queries,
+        "workspace_rerank_top_k": args.workspace_rerank_top_k,
+        "workspace_table_residual_penalty": args.workspace_table_residual_penalty,
+        "workspace_outside_penalty": args.workspace_outside_penalty,
+        "workspace_boxes": getattr(args, "workspace_boxes_norm", {}),
         "feature_projector": args.feature_projector,
         "dinov3_base_dim": args.dinov3_base_dim,
         "dinov3_scales": args.dinov3_scales_list,
@@ -2754,6 +3771,11 @@ def main():
         "strict_valid_factor_states": not args.keep_invalid,
         "exclude_duplicate_parts": args.exclude_duplicate_parts,
         "excluded_duplicate_part_samples": len(excluded_duplicate_ids),
+        "require_labels": args.require_labels,
+        "excluded_unlabeled_samples": len(excluded_unlabeled_ids),
+        "ariac_label_dir": str(args.ariac_label_dir),
+        "label_bbox_coverage": int(label_bbox_has_labels_t.sum().item()),
+        **label_bbox_meta,
         "train_all": args.train_all,
         "eval_name": "train-fit" if args.train_all else "test",
         "seed": args.seed,
@@ -2788,6 +3810,7 @@ def main():
                 sketch=sketch,
                 type_ids=type_ids,
                 slot_init=slot_init,
+                support_geometry_features=support_geometry_features_t,
                 args=args,
             )
             k_dir = exp_dir / f"k_{k}" / method
